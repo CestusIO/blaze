@@ -1,0 +1,114 @@
+stages:
+  - prepare
+  - build
+  #- test
+  - manage
+  - store
+
+before_script: []
+variables:
+  IMAGE_NAME: blaze
+
+
+automr:
+  stage: prepare
+  image: registry.gitlab.com/cestus/ci/runner-base:latest
+  variables:
+    GIT_STRATEGY: none
+  before_script: []   # We do not need any setup work, let's remove the global one (if any)
+  script:
+    - cihelper auto-mr --repo=$CI_PROJECT_ID --source=$CI_COMMIT_REF_NAME --title="${CI_COMMIT_TITLE}" --description="${CI_COMMIT_DESCRIPTION}" --assignee=$GITLAB_USER_ID
+  except:
+    - master
+    - tags
+
+determineVersion:
+  stage: prepare
+  image: registry.gitlab.com/cestus/ci/runner-base:latest
+  before_script: []   # We do not need any setup work, let's remove the global one (if any)
+  script:
+    - export tag=$(git describe --tags)
+    - export buildcounter=${CI_COMMIT_SHORT_SHA}
+    - svermaker g $tag
+    - . buildhelper.tmp
+  artifacts:
+    paths:
+      - buildhelper.tmp
+    expire_in: 45 days
+
+build:
+  image: registry.gitlab.com/cestus/ci/runner-go:latest
+  stage: build
+  cache:
+    key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .cache
+      - _tools
+  script:
+    - mkdir -p .cache
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - . buildhelper.tmp
+    # - go generate ./...
+    # - go build ./...
+    # - timestamp=`date --rfc-2822 --utc`
+    # - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=12.1.1 -X main.BuildTime=`date -u '+%Y-%m-%d-%T%z'`" -a  -o ./app ./cmd/testapp/testapp.go
+    #- make
+
+  artifacts:
+    paths:
+      - app
+      - buildhelper.tmp
+      - Dockerfile
+    expire_in: 1 day
+
+autotag:
+  stage: manage
+  image: registry.gitlab.com/cestus/ci/runner-base:latest
+  before_script: []   # We do not need any setup work, let's remove the global one (if any)
+  script:
+    - . buildhelper.tmp
+    - cihelper auto-tag --repo=$CI_PROJECT_ID --commit=$CI_COMMIT_SHA --tag=$goModuleBuildVersion --isRelease=$svermakerRelease
+  except:
+    - tags
+  only:
+    - master
+
+publish_docker:
+  image: docker:git
+  services:
+    - docker:dind
+  stage: store
+  before_script: []
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - . buildhelper.tmp
+    - export PUBLISH_VERSION=$svermakerHelmLabel
+    - echo publishing ${PUBLISH_VERSION}
+    - docker login -u=$QUAY_USER -p=$QUAY_PASS quay.io
+    - docker build -t quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION .
+    - docker push quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION
+  only:
+    - tags
+
+publish_docker_manual:
+  image: docker:git
+  services:
+    - docker:dind
+  stage: store
+  before_script: []
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - . buildhelper.tmp
+    - export PUBLISH_VERSION=$svermakerHelmLabel
+    - echo publishing ${PUBLISH_VERSION}
+    - docker login -u=$QUAY_USER -p=$QUAY_PASS quay.io
+    - docker build -t quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION .
+    - docker push quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION
+  when: manual
+  except:
+    - tags
+
+
+
