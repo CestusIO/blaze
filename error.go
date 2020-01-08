@@ -28,13 +28,15 @@
 
 package blaze
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Error represents an error in a Blaze service call.
 type Error interface {
-	// Code is of the valid error codes.
-	Code() ErrorCode
-
+	// Type returns the type of the error
+	Type() string
 	// Msg returns a human-readable, unstructured messages describing the error.
 	Msg() string
 
@@ -47,252 +49,35 @@ type Error interface {
 	// an unset value and an explicit empty string.
 	Meta(key string) string
 
-	// MetaMap returns the complete key-value metadata map stored on the error.
+	// MetaMap returns a copy of the complete key-value metadata map stored on the error.
 	MetaMap() map[string]string
 
 	// Error returns a string of the form "blaze error <Type>: <Msg>"
 	Error() string
-}
 
-// NewError is the generic constructor for a blaze.Error. The ErrorCode must be
-// one of the valid predefined constants, otherwise it will be converted to an
-// error {type: Internal, msg: "invalid error type {{code}}"}. If you need to
-// add metadata, use .WithMeta(key, value) method after building the error.
-func NewError(code ErrorCode, msg string) Error {
-	if IsValidErrorCode(code) {
-		return &twerr{
-			code: code,
-			msg:  msg,
-		}
-	}
-	return &twerr{
-		code: Internal,
-		msg:  "invalid error type " + string(code),
-	}
-}
-
-// NotFoundError constructor for the common NotFound error.
-func NotFoundError(msg string) Error {
-	return NewError(NotFound, msg)
-}
-
-// InvalidArgumentError constructor for the common InvalidArgument error. Can be
-// used when an argument has invalid format, is a number out of range, is a bad
-// option, etc).
-func InvalidArgumentError(argument string, validationMsg string) Error {
-	err := NewError(InvalidArgument, argument+" "+validationMsg)
-	err = err.WithMeta("argument", argument)
-	return err
-}
-
-// RequiredArgumentError is a more specific constructor for InvalidArgument
-// error. Should be used when the argument is required (expected to have a
-// non-zero value).
-func RequiredArgumentError(argument string) Error {
-	return InvalidArgumentError(argument, "is required")
-}
-
-// InternalError constructor for the common Internal error. Should be used to
-// specify that something bad or unexpected happened.
-func InternalError(msg string) Error {
-	return NewError(Internal, msg)
-}
-
-// InternalErrorWith is an easy way to wrap another error. It adds the
-// underlying error's type as metadata with a key of "cause", which can be
-// useful for debugging. Should be used in the common case of an unexpected
-// error returned from another API, but sometimes it is better to build a more
-// specific error (like with NewError(Unknown, err.Error()), for example).
-//
-// The returned error also has a Cause() method which will return the original
-// error, if it is known. This can be used with the github.com/pkg/errors
-// package to extract the root cause of an error. Information about the root
-// cause of an error is lost when it is serialized, so this doesn't let a client
-// know the exact root cause of a server's error.
-func InternalErrorWith(err error) Error {
-	msg := err.Error()
-	twerr := NewError(Internal, msg)
-	twerr = twerr.WithMeta("cause", fmt.Sprintf("%T", err)) // to easily tell apart wrapped internal errors from explicit ones
-	return &wrappedErr{
-		wrapper: twerr,
-		cause:   err,
-	}
-}
-
-// ErrorCode represents a blaze error type.
-type ErrorCode string
-
-// Valid blaze error types. Most error types are equivalent to gRPC status codes
-// and follow the same semantics.
-const (
-	// Canceled indicates the operation was cancelled (typically by the caller).
-	Canceled ErrorCode = "canceled"
-
-	// Unknown error. For example when handling errors raised by APIs that do not
-	// return enough error information.
-	Unknown ErrorCode = "unknown"
-
-	// InvalidArgument indicates client specified an invalid argument. It
-	// indicates arguments that are problematic regardless of the state of the
-	// system (i.e. a malformed file name, required argument, number out of range,
-	// etc.).
-	InvalidArgument ErrorCode = "invalid_argument"
-
-	// Malformed indicates an error occurred while decoding the client's request.
-	// This may mean that the message was encoded improperly, or that there is a
-	// disagreement in message format between the client and server.
-	Malformed ErrorCode = "malformed"
-
-	// DeadlineExceeded means operation expired before completion. For operations
-	// that change the state of the system, this error may be returned even if the
-	// operation has completed successfully (timeout).
-	DeadlineExceeded ErrorCode = "deadline_exceeded"
-
-	// NotFound means some requested entity was not found.
-	NotFound ErrorCode = "not_found"
-
-	// BadRoute means that the requested URL path wasn't routable to a blaze
-	// service and method. This is returned by the generated server, and usually
-	// shouldn't be returned by applications. Instead, applications should use
-	// NotFound or Unimplemented.
-	BadRoute ErrorCode = "bad_route"
-
-	// AlreadyExists means an attempt to create an entity failed because one
-	// already exists.
-	AlreadyExists ErrorCode = "already_exists"
-
-	// PermissionDenied indicates the caller does not have permission to execute
-	// the specified operation. It must not be used if the caller cannot be
-	// identified (Unauthenticated).
-	PermissionDenied ErrorCode = "permission_denied"
-
-	// Unauthenticated indicates the request does not have valid authentication
-	// credentials for the operation.
-	Unauthenticated ErrorCode = "unauthenticated"
-
-	// ResourceExhausted indicates some resource has been exhausted, perhaps a
-	// per-user quota, or perhaps the entire file system is out of space.
-	ResourceExhausted ErrorCode = "resource_exhausted"
-
-	// FailedPrecondition indicates operation was rejected because the system is
-	// not in a state required for the operation's execution. For example, doing
-	// an rmdir operation on a directory that is non-empty, or on a non-directory
-	// object, or when having conflicting read-modify-write on the same resource.
-	FailedPrecondition ErrorCode = "failed_precondition"
-
-	// Aborted indicates the operation was aborted, typically due to a concurrency
-	// issue like sequencer check failures, transaction aborts, etc.
-	Aborted ErrorCode = "aborted"
-
-	// OutOfRange means operation was attempted past the valid range. For example,
-	// seeking or reading past end of a paginated collection.
-	//
-	// Unlike InvalidArgument, this error indicates a problem that may be fixed if
-	// the system state changes (i.e. adding more items to the collection).
-	//
-	// There is a fair bit of overlap between FailedPrecondition and OutOfRange.
-	// We recommend using OutOfRange (the more specific error) when it applies so
-	// that callers who are iterating through a space can easily look for an
-	// OutOfRange error to detect when they are done.
-	OutOfRange ErrorCode = "out_of_range"
-
-	// Unimplemented indicates operation is not implemented or not
-	// supported/enabled in this service.
-	Unimplemented ErrorCode = "unimplemented"
-
-	// Internal errors. When some invariants expected by the underlying system
-	// have been broken. In other words, something bad happened in the library or
-	// backend service. Do not confuse with HTTP Internal Server Error; an
-	// Internal error could also happen on the client code, i.e. when parsing a
-	// server response.
-	Internal ErrorCode = "internal"
-
-	// Unavailable indicates the service is currently unavailable. This is a most
-	// likely a transient condition and may be corrected by retrying with a
-	// backoff.
-	Unavailable ErrorCode = "unavailable"
-
-	// DataLoss indicates unrecoverable data loss or corruption.
-	DataLoss ErrorCode = "data_loss"
-
-	// NoError is the zero-value, is considered an empty error and should not be
-	// used.
-	NoError ErrorCode = ""
-)
-
-// ServerHTTPStatusFromErrorCode maps a blaze error type into a similar HTTP
-// response status. It is used by the blaze server handler to set the HTTP
-// response status code. Returns 0 if the ErrorCode is invalid.
-func ServerHTTPStatusFromErrorCode(code ErrorCode) int {
-	switch code {
-	case Canceled:
-		return 408 // RequestTimeout
-	case Unknown:
-		return 500 // Internal Server Error
-	case InvalidArgument:
-		return 400 // BadRequest
-	case Malformed:
-		return 400 // BadRequest
-	case DeadlineExceeded:
-		return 408 // RequestTimeout
-	case NotFound:
-		return 404 // Not Found
-	case BadRoute:
-		return 404 // Not Found
-	case AlreadyExists:
-		return 409 // Conflict
-	case PermissionDenied:
-		return 403 // Forbidden
-	case Unauthenticated:
-		return 401 // Unauthorized
-	case ResourceExhausted:
-		return 403 // Forbidden
-	case FailedPrecondition:
-		return 412 // Precondition Failed
-	case Aborted:
-		return 409 // Conflict
-	case OutOfRange:
-		return 400 // Bad Request
-	case Unimplemented:
-		return 501 // Not Implemented
-	case Internal:
-		return 500 // Internal Server Error
-	case Unavailable:
-		return 503 // Service Unavailable
-	case DataLoss:
-		return 500 // Internal Server Error
-	case NoError:
-		return 200 // OK
-	default:
-		return 0 // Invalid!
-	}
-}
-
-// IsValidErrorCode returns true if is one of the valid predefined constants.
-func IsValidErrorCode(code ErrorCode) bool {
-	return ServerHTTPStatusFromErrorCode(code) != 0
+	//Unwrap returns the wrapped error
+	Unwrap() error
 }
 
 // blaze.Error implementation
-type twerr struct {
-	code ErrorCode
+type blerr struct {
+	err  error
 	msg  string
 	meta map[string]string
 }
 
-func (e *twerr) Code() ErrorCode { return e.code }
-func (e *twerr) Msg() string     { return e.msg }
-
-func (e *twerr) Meta(key string) string {
+func (e *blerr) Type() string { return fmt.Sprintf("%T", e.err) }
+func (e *blerr) Msg() string  { return e.msg }
+func (e *blerr) Meta(key string) string {
 	if e.meta != nil {
 		return e.meta[key] // also returns "" if key is not in meta map
 	}
 	return ""
 }
 
-func (e *twerr) WithMeta(key string, value string) Error {
-	newErr := &twerr{
-		code: e.code,
+func (e *blerr) WithMeta(key string, value string) Error {
+	newErr := &blerr{
+		err:  e.err,
 		msg:  e.msg,
 		meta: make(map[string]string, len(e.meta)),
 	}
@@ -303,33 +88,378 @@ func (e *twerr) WithMeta(key string, value string) Error {
 	return newErr
 }
 
-func (e *twerr) MetaMap() map[string]string {
-	return e.meta
+func (e *blerr) MetaMap() map[string]string {
+	meta := make(map[string]string, len(e.meta))
+	for k, v := range e.meta {
+		meta[k] = v
+	}
+	return meta
 }
 
-func (e *twerr) Error() string {
-	return fmt.Sprintf("blaze error %s: %s", e.code, e.msg)
+func (e *blerr) Error() string {
+	return fmt.Sprintf("blaze error %s: %s", e.Type(), e.msg)
 }
 
-// wrappedErr fulfills the blaze.Error interface and the
-// github.com/pkg/errors.Causer interface. It exposes all the blaze error
-// methods, but root cause of an error can be retrieved with
-// (*wrappedErr).Cause. This is expected to be used with the InternalErrorWith
-// function.
-type wrappedErr struct {
-	wrapper Error
-	cause   error
+func (e *blerr) Unwrap() error { return e.err }
+
+func (e *blerr) Is(err error) bool {
+	var er interface{} = err
+	assuredErr, ok := er.(Error)
+	if ok {
+		return e.Unwrap().Error() == assuredErr.Unwrap().Error()
+	}
+	return false
 }
 
-func (e *wrappedErr) Code() ErrorCode            { return e.wrapper.Code() }
-func (e *wrappedErr) Msg() string                { return e.wrapper.Msg() }
-func (e *wrappedErr) Meta(key string) string     { return e.wrapper.Meta(key) }
-func (e *wrappedErr) MetaMap() map[string]string { return e.wrapper.MetaMap() }
-func (e *wrappedErr) Error() string              { return e.wrapper.Error() }
-func (e *wrappedErr) WithMeta(key string, val string) Error {
-	return &wrappedErr{
-		wrapper: e.wrapper.WithMeta(key, val),
-		cause:   e.cause,
+// NewError is the generic constructor for a blaze.Error. The error must be
+// one of the valid predefined ones in errors.go, otherwise it will be converted to an
+// error {type: Internal, msg: "invalid error type {{code}}"}. If you need to
+// add metadata, use .WithMeta(key, value) method after building the error.
+func NewError(err error, msg string) Error {
+	if IsError(err) {
+		return &blerr{
+			err: err,
+			msg: msg,
+		}
+	}
+	return &blerr{
+		err: &InternalErrorType{
+			err: err,
+		},
+		msg: func(err error, msg string) string {
+			if err != nil {
+				return fmt.Sprintf("Internal error: %s: %s", msg, err.Error())
+			}
+			return msg
+		}(err, msg),
 	}
 }
-func (e *wrappedErr) Cause() error { return e.cause }
+
+// IsError checks if the passed error is a blaze error
+func IsError(err error) bool {
+	return ServerHTTPStatusFromErrorType(err) != 0
+}
+
+// ServerHTTPStatusFromErrorType maps a blaze error type into a similar HTTP
+// response status. It is used by the blaze server handler to set the HTTP
+// response status code. Returns 0 if the error is not a blaze error.
+func ServerHTTPStatusFromErrorType(err error) int {
+	switch err.(type) {
+	case Error:
+		{
+			err = errors.Unwrap(err)
+		}
+	}
+	switch err.(type) {
+	case *CanceledErrorType:
+		return 408 // RequestTimeout
+	case *UnknownErrorType:
+		return 500 // Internal Server Error
+	case *InvalidArgumentErrorType:
+		return 400 // BadRequest
+	case *MalformedErrorType:
+		return 400 // BadRequest
+	case *DeadlineExceededErrorType:
+		return 408 // RequestTimeout
+	case *NotFoundErrorType:
+		return 404 // Not Found
+	case *BadRouteErrorType:
+		return 404 // Not Found
+	case *AlreadyExistsErrorType:
+		return 409 // Conflict
+	case *PermissionDeniedErrorType:
+		return 403 // Forbidden
+	case *UnauthenticatedErrorType:
+		return 401 // Unauthorized
+	case *ResourceExhaustedErrorType:
+		return 403 // Forbidden
+	case *FailedPreconditionErrorType:
+		return 412 // Precondition Failed
+	case *AbortedErrorType:
+		return 409 // Conflict
+	case *OutOfRangeErrorType:
+		return 400 // Bad Request
+	case *UnimplementedErrorType:
+		return 501 // Not Implemented
+	case *InternalErrorType:
+		return 500 // Internal Server Error
+	case *UnavailableErrorType:
+		return 503 // Service Unavailable
+	case *DataLossErrorType:
+		return 500 // Internal Server Error
+	default:
+		return 0 // Invalid!
+	}
+}
+
+// #region error types
+
+// #region CanceledErrorType
+
+//CanceledErrorType indicates the operation was cancelled (typically by the caller).
+type CanceledErrorType struct{}
+
+func (e *CanceledErrorType) Error() string { return "canceled" }
+
+//ErrorCanceled constructs a canceled error
+func ErrorCanceled() Error { return NewError(&CanceledErrorType{}, "") }
+
+// #endregion
+// #region NotFoundErrorType
+
+//NotFoundErrorType indicates a common NotFound error
+type NotFoundErrorType struct{}
+
+func (e *NotFoundErrorType) Error() string { return "not_found" }
+
+//ErrorNotFound constructs a canceled error
+func ErrorNotFound() Error { return NewError(&NotFoundErrorType{}, "") }
+
+// #endregion
+
+// #region InvalidArgumentErrorType
+
+// InvalidArgumentErrorType indicates client specified an invalid argument. It
+// indicates arguments that are problematic regardless of the state of the
+// system (i.e. a malformed file name, required argument, number out of range,
+// etc.).
+type InvalidArgumentErrorType struct{}
+
+func (e *InvalidArgumentErrorType) Error() string { return "invalid_argument" }
+
+//ErrorInvalidArgument constructs invalid argument error
+func ErrorInvalidArgument(argument string, validationMsg string) Error {
+	err := NewError(&InvalidArgumentErrorType{}, fmt.Sprintf("%s %s", argument, validationMsg))
+	err = err.WithMeta("argument", argument)
+	return err
+}
+
+// ErrorRequiredArgument is a more specific constructor for ErrorInvalidArgument.
+// Should be used when the argument is required (expected to have a
+// non-zero value).
+func ErrorRequiredArgument(argument string) Error {
+	return ErrorInvalidArgument(argument, "is_required")
+}
+
+// #endregion
+
+// #region InternalErrorType
+
+// InternalErrorType error is an error produced by a downstream dependency of blaze
+type InternalErrorType struct {
+	err error
+}
+
+func (e *InternalErrorType) Error() string {
+	if e.err != nil {
+		return e.err.Error()
+	}
+	return "unknown"
+}
+
+// Unwrap implements the wrappable error
+func (e *InternalErrorType) Unwrap() error { return e.err }
+
+// ErrorInternal When some invariants expected by the underlying system
+// have been broken. In other words, something bad happened in the library or
+// backend service. Do not confuse with HTTP Internal Server Error; an
+// Internal error could also happen on the client code, i.e. when parsing a
+// server response.
+func ErrorInternal(msg string) Error { return NewError(&InternalErrorType{}, msg) }
+
+// ErrorInternalWith  When some invariants expected by the underlying system
+// have been broken. In other words, something bad happened in the library or
+// backend service. Do not confuse with HTTP Internal Server Error; an
+// Internal error could also happen on the client code, i.e. when parsing a
+// server response.
+// Wraps an other error for more information
+func ErrorInternalWith(err error, msg string) Error {
+	return NewError(&InternalErrorType{err: err}, msg)
+}
+
+// #endregion
+// #region UnknownErrorType
+
+//UnknownErrorType For example handling errors raised by APIs that dont return enough error information
+type UnknownErrorType struct{}
+
+func (e *UnknownErrorType) Error() string { return "unknown" }
+
+//ErrorUnknown constructs a Unknown error
+func ErrorUnknown() Error { return NewError(&UnknownErrorType{}, "") }
+
+// #endregion
+// #region MalformedErrorType
+
+// MalformedErrorType indicates an error occured while decoding the client's request.
+// This means that the message was encoded improperly, or that there is an disagreement in message format
+// between client and server
+type MalformedErrorType struct{}
+
+func (e *MalformedErrorType) Error() string { return "Malformed" }
+
+//ErrorMalformed constructs a malformed error
+func ErrorMalformed(msg string) Error { return NewError(&MalformedErrorType{}, msg) }
+
+// #endregion
+
+// #region DeadlineExceededErrorType
+
+//DeadlineExceededErrorType means operation expired before completion. For operations
+// that change the state of the system, this error may be returned even if the
+// operation has completed successfully (timeout).
+type DeadlineExceededErrorType struct{}
+
+func (e *DeadlineExceededErrorType) Error() string { return "deadline_exeeded" }
+
+//ErrorDeadlineExeeded constructs a canceled error
+func ErrorDeadlineExeeded() Error { return NewError(&DeadlineExceededErrorType{}, "") }
+
+// #endregion
+// #region BadRouteErrorType
+
+// BadRouteErrorType means that the requested URL path wasn't routable to a blaze
+// service and method. This is returned by the generated server, and usually
+// shouldn't be returned by applications. Instead, applications should use
+// NotFound or Unimplemented.
+type BadRouteErrorType struct{}
+
+func (e *BadRouteErrorType) Error() string { return "bad_route" }
+
+//ErrorBadRoute constructs bad route error
+func ErrorBadRoute(msg string) Error { return NewError(&BadRouteErrorType{}, msg) }
+
+// #endregion
+// #region AlreadyExistsErrorType
+
+// AlreadyExistsErrorType means an attempt to create an entity failed because one
+// already exists
+type AlreadyExistsErrorType struct{}
+
+func (e *AlreadyExistsErrorType) Error() string { return "already_exists" }
+
+//ErrorAlreadyExists constructs a already exists error
+func ErrorAlreadyExists() Error { return NewError(&AlreadyExistsErrorType{}, "") }
+
+// #endregion
+// #region PermissionDeniedErrorType
+
+// PermissionDeniedErrorType indicates the caller does not have permission to execute
+// the specified operation. It must not be used if the caller cannot be
+// identified (Unauthenticated).
+type PermissionDeniedErrorType struct{}
+
+func (e *PermissionDeniedErrorType) Error() string { return "permission_denied" }
+
+//ErrorPermissionDenied constructs a already exists error
+func ErrorPermissionDenied() Error { return NewError(&PermissionDeniedErrorType{}, "") }
+
+// #endregion
+// #region UnauthenticatedErrorType
+
+// UnauthenticatedErrorType indicates the request does not have valid authentication
+// credentials for the operation.
+type UnauthenticatedErrorType struct{}
+
+func (e *UnauthenticatedErrorType) Error() string { return "unauthenticated" }
+
+//ErrorUnauthenticated constructs a unauthenticated error
+func ErrorUnauthenticated() Error { return NewError(&UnauthenticatedErrorType{}, "") }
+
+// #endregion
+// #region ResourceExhaustedErrorType
+
+// ResourceExhaustedErrorType indicates some resource has been exhausted, perhaps a
+// per-user quota, or perhaps the entire file system is out of space.
+type ResourceExhaustedErrorType struct{}
+
+func (e *ResourceExhaustedErrorType) Error() string { return "resource_exhausted" }
+
+//ErrorResourceExhausted constructs a resource exhousted error
+func ErrorResourceExhausted() Error { return NewError(&ResourceExhaustedErrorType{}, "") }
+
+// #endregion
+// #region FailedPreconditionErrorType
+
+// FailedPreconditionErrorType indicates operation was rejected because the system is
+// not in a state required for the operation's execution. For example, doing
+// an rmdir operation on a directory that is non-empty, or on a non-directory
+// object, or when having conflicting read-modify-write on the same resource.
+type FailedPreconditionErrorType struct{}
+
+func (e *FailedPreconditionErrorType) Error() string { return "failed_precondition" }
+
+//ErrorFailedPrecondition constructs a failed precondition error
+func ErrorFailedPrecondition() Error { return NewError(&FailedPreconditionErrorType{}, "") }
+
+// #endregion
+// #region AbortedErrorType
+
+// AbortedErrorType indicates the operation was aborted, typically due to a concurrency
+// issue like sequencer check failures, transaction aborts, etc.
+type AbortedErrorType struct{}
+
+func (e *AbortedErrorType) Error() string { return "aborted" }
+
+//ErrorAborted constructs a aborted error
+func ErrorAborted() Error { return NewError(&AbortedErrorType{}, "") }
+
+// #endregion
+// #region OutOfRangeErrorType
+
+// OutOfRangeErrorType means operation was attempted past the valid range. For example,
+// seeking or reading past end of a paginated collection.
+//
+// Unlike InvalidArgument, this error indicates a problem that may be fixed if
+// the system state changes (i.e. adding more items to the collection).
+//
+// There is a fair bit of overlap between FailedPrecondition and OutOfRange.
+// We recommend using OutOfRange (the more specific error) when it applies so
+// that callers who are iterating through a space can easily look for an
+// OutOfRange error to detect when they are done.
+type OutOfRangeErrorType struct{}
+
+func (e *OutOfRangeErrorType) Error() string { return "out_of_range" }
+
+//ErrorOutOfRange constructs a out of range error
+func ErrorOutOfRange() Error { return NewError(&OutOfRangeErrorType{}, "") }
+
+// #endregion
+// #region UnimplementedErrorType
+
+// UnimplementedErrorType indicates operation is not implemented or not
+// supported/enabled in this service.
+type UnimplementedErrorType struct{}
+
+func (e *UnimplementedErrorType) Error() string { return "unimplemented" }
+
+//ErrorUnimplemented constructs an unimplemented error
+func ErrorUnimplemented() Error { return NewError(&UnimplementedErrorType{}, "") }
+
+// #endregion
+
+// #region UnavailableErrorType
+
+// UnavailableErrorType indicates the service is currently unavailable. This is a most
+// likely a transient condition and may be corrected by retrying with a
+// backoff.
+type UnavailableErrorType struct{}
+
+func (e *UnavailableErrorType) Error() string { return "unavailable" }
+
+//ErrorUnavailable constructs an unavailable error
+func ErrorUnavailable() Error { return NewError(&UnavailableErrorType{}, "") }
+
+// #endregion
+// #region DataLossErrorType
+
+// DataLossErrorType indicates unrecoverable data loss or corruption.
+type DataLossErrorType struct{}
+
+func (e *DataLossErrorType) Error() string { return "data_loss" }
+
+//ErrorDataLoss constructs a data loss error
+func ErrorDataLoss() Error { return NewError(&DataLossErrorType{}, "") }
+
+// #endregion
+// #endregion
