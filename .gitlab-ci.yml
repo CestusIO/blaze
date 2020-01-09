@@ -39,14 +39,14 @@ determineVersion:
 build:
   image: registry.gitlab.com/cestus/ci/runner-go:latest
   stage: build
-  cache:
-    key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
+  cache: &build_cache
+    key: build
     paths:
       - .cache
-      - _tools
   script:
     - mkdir -p .cache
-    - export GOCACHE="$CI_PROJECT_DIR/.cache"
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - export PATH=$GOPATH/bin:$PATH
     - . buildhelper.tmp
     - make build_all
 
@@ -60,14 +60,11 @@ build:
 test:
   image: registry.gitlab.com/cestus/ci/runner-go:latest
   stage: test
-  cache:
-    key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
-    paths:
-      - .cache
-      - _tools
+  cache: *build_cache
   script:
     - mkdir -p .cache
-    - export GOCACHE="$CI_PROJECT_DIR/.cache"
+    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - export PATH=$GOPATH/bin:$PATH
     - . buildhelper.tmp
     - make test
 
