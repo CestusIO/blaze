@@ -1,7 +1,7 @@
 stages:
   - prepare
   - build
-  #- test
+  - test
   - manage
   - store
 
@@ -46,13 +46,30 @@ build:
       - _tools
   script:
     - mkdir -p .cache
-    - export GOPATH="$CI_PROJECT_DIR/.cache"
+    - export GOCACHE="$CI_PROJECT_DIR/.cache"
     - . buildhelper.tmp
-    # - go generate ./...
-    # - go build ./...
-    # - timestamp=`date --rfc-2822 --utc`
-    # - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=12.1.1 -X main.BuildTime=`date -u '+%Y-%m-%d-%T%z'`" -a  -o ./app ./cmd/testapp/testapp.go
-    #- make
+    - make build_all
+
+  artifacts:
+    paths:
+      - app
+      - buildhelper.tmp
+      - Dockerfile
+    expire_in: 1 day
+
+test:
+  image: registry.gitlab.com/cestus/ci/runner-go:latest
+  stage: test
+  cache:
+    key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .cache
+      - _tools
+  script:
+    - mkdir -p .cache
+    - export GOCACHE="$CI_PROJECT_DIR/.cache"
+    - . buildhelper.tmp
+    - make test
 
   artifacts:
     paths:
