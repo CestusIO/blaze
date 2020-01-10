@@ -52,7 +52,7 @@ build:
 
   artifacts:
     paths:
-      - app
+      - bin
       - buildhelper.tmp
       - Dockerfile
     expire_in: 1 day
@@ -68,13 +68,6 @@ test:
     - . buildhelper.tmp
     - make test
 
-  artifacts:
-    paths:
-      - app
-      - buildhelper.tmp
-      - Dockerfile
-    expire_in: 1 day
-
 autotag:
   stage: manage
   image: registry.gitlab.com/cestus/ci/runner-base:latest
@@ -87,42 +80,37 @@ autotag:
   only:
     - master
 
-publish_docker:
-  image: docker:git
-  services:
-    - docker:dind
+publish_artifact:
+  image: registry.gitlab.com/cestus/ci/runner-base:latest
   stage: store
   before_script: []
   variables:
     GIT_STRATEGY: none
+  dependencies:
+    - build
+  artifacts:
+    paths:
+      - bin
+    expire_in: 50yrs
   script:
-    - . buildhelper.tmp
-    - export PUBLISH_VERSION=$svermakerHelmLabel
-    - echo publishing ${PUBLISH_VERSION}
-    - docker login -u=$QUAY_USER -p=$QUAY_PASS quay.io
-    - docker build -t quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION .
-    - docker push quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION
+    - ls -la
   only:
     - tags
 
-publish_docker_manual:
-  image: docker:git
-  services:
-    - docker:dind
+publish_artifact_manual:
+  image: registry.gitlab.com/cestus/ci/runner-base:latest
   stage: store
   before_script: []
   variables:
     GIT_STRATEGY: none
+  dependencies:
+    - build
+  artifacts:
+    paths:
+      - bin
+    expire_in: 50yrs
   script:
-    - . buildhelper.tmp
-    - export PUBLISH_VERSION=$svermakerHelmLabel
-    - echo publishing ${PUBLISH_VERSION}
-    - docker login -u=$QUAY_USER -p=$QUAY_PASS quay.io
-    - docker build -t quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION .
-    - docker push quay.io/$QUAY_ORG/$IMAGE_NAME:$PUBLISH_VERSION
+    - ls -la
   when: manual
   except:
     - tags
-
-
-
