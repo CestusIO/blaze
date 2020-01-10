@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"os"
@@ -8,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
+	"code.cestus.io/blaze/pkg/generator"
 )
 
 var (
@@ -30,6 +32,13 @@ func NewZapDevelopmentConfig() zap.Config {
 }
 
 func main() {
+	versionFlag := flag.Bool("version", false, "print version and exit")
+	flag.Parse()
+	if *versionFlag {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
+
 	var log logr.Logger
 
 	zapLog, err := NewZapDevelopmentConfig().Build()
@@ -37,5 +46,6 @@ func main() {
 		panic(fmt.Sprintf("Cannot init logger (%v)?", err))
 	}
 	log = zapr.NewLogger(zapLog).WithValues("version", Version).WithName("test")
-	log.V(0).Info("Initializing", "pid", os.Getpid())
+	g := newGenerator(log)
+	generator.Generate(g)
 }
