@@ -424,10 +424,9 @@ func (s *blaze) generateServer(file *descriptor.FileDescriptorProto, service *de
 	s.P(`return &server`)
 	s.P(`}`)
 	s.P()
-	// Getting the last part of the package name which is supposed to be the version
-	ss := strings.Split(s.genPkgName, "_")
-	v := ss[len(ss)-1]
-	s.P(`const `, servName, `PathPrefix = "/`, v, `"`)
+	// Getting the mount path as package/version
+	ss := strings.ReplaceAll(s.genPkgName, "_", "/")
+	s.P(`const `, servName, `PathPrefix = "/`, ss, `"`)
 
 	s.P(`// Methods.`)
 	for _, method := range service.Method {

@@ -35,3 +35,10 @@ type Server interface {
 	Mux() *chi.Mux
 	MountPath() string
 }
+
+// ClientOption is a functional option for extending a Blaze client.
+type ClientOption func(*ClientOptions)
+
+// ClientOptions encapsulate the configurable parameters on a Blaze client.
+type ClientOptions struct {
+}

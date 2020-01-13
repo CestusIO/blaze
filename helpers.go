@@ -132,3 +132,27 @@ func errFromPanic(p interface{}) error {
 	}
 	return fmt.Errorf("panic: %v", p)
 }
+
+// WithoutRedirects makes sure that the POST request can not be redirected.
+// The standard library will, by default, redirect requests (including POSTs) if it gets a 302 or
+// 303 response, and also 301s in go1.8. It redirects by making a second request, changing the
+// method to GET and removing the body. This produces very confusing error messages, so instead we
+// set a redirect policy that always errors. This stops Go from executing the redirect.
+//
+// We have to be a little careful in case the user-provided http.Client has its own CheckRedirect
+// policy - if so, we'll run through that policy first.
+//
+// Because this requires modifying the http.Client, we make a new copy of the client and return it.
+func WithoutRedirects(in *http.Client) *http.Client {
+	copy := *in
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if in.CheckRedirect != nil {
+			// Run the input's redirect if it exists, in case it has side effects, but ignore any error it
+			// returns, since we want to use ErrUseLastResponse.
+			err := in.CheckRedirect(req, via)
+			_ = err // Silly, but this makes sure generated code passes errcheck -blank, which some people use.
+		}
+		return http.ErrUseLastResponse
+	}
+	return &copy
+}
