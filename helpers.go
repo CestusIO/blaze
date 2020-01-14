@@ -29,9 +29,11 @@
 package blaze
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -96,13 +98,6 @@ func ServerEnsurePanicResponses(ctx context.Context, resp http.ResponseWriter, l
 	}
 }
 
-// JSON serialization for errors
-type blazeJSON struct {
-	Code string            `json:"code"`
-	Msg  string            `json:"msg"`
-	Meta map[string]string `json:"meta,omitempty"`
-}
-
 // marshalErrorToJSON returns JSON from a blaze.Error, that can be used as HTTP error response body.
 // If serialization fails, it will use a descriptive Internal error instead.
 func marshalErrorToJSON(blerr Error) []byte {
@@ -112,9 +107,10 @@ func marshalErrorToJSON(blerr Error) []byte {
 		msg = msg[:1e6]
 	}
 
-	tj := blazeJSON{
+	tj := ErrorJSON{
 		Code: strconv.Itoa(ServerHTTPStatusFromErrorType(blerr)),
 		Msg:  msg,
+		Type: blerr.Type(),
 		Meta: blerr.MetaMap(),
 	}
 
@@ -155,4 +151,58 @@ func WithoutRedirects(in *http.Client) *http.Client {
 		return http.ErrUseLastResponse
 	}
 	return &copy
+}
+
+// ErrorFromResponse builds a blaze.Error from a non-200 HTTP response.
+// If the response has a valid serialized Blaze error, then it's returned.
+// If not, the response status code is used to generate a similar Blaze
+// error. See blazeErrorFromIntermediary for more info on intermediary errors.
+func ErrorFromResponse(resp *http.Response) Error {
+	statusCode := resp.StatusCode
+	statusText := http.StatusText(statusCode)
+
+	if isHTTPRedirect(statusCode) {
+		// Unexpected redirect: it must be an error from an intermediary.
+		// Twirp clients don't follow redirects automatically, Twirp only handles
+		// POST requests, redirects should only happen on GET and HEAD requests.
+		location := resp.Header.Get("Location")
+		msg := fmt.Sprintf("unexpected HTTP status code %d %q received, Location=%q", statusCode, statusText, location)
+		return blazeErrorFromIntermediary(statusCode, msg, location)
+	}
+
+	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ErrorInternalWith(err, "failed to read server error response body")
+	}
+
+	var tj ErrorJSON
+	dec := json.NewDecoder(bytes.NewReader(respBodyBytes))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&tj); err != nil || tj.Code == "" {
+		// Invalid JSON response; it must be an error from an intermediary.
+		msg := fmt.Sprintf("Error from intermediary with HTTP status code %d %q", statusCode, statusText)
+		return blazeErrorFromIntermediary(statusCode, msg, string(respBodyBytes))
+	}
+
+	// errorCode := twirp.ErrorCode(tj.Code)
+	// if !IsValidErrorCode(errorCode) {
+	// 	msg := "invalid type returned from server error response: " + tj.Code
+	// 	return ErrorInternal(msg)
+	// }
+
+	// twerr := twirp.NewError(errorCode, tj.Msg)
+	// for k, v := range tj.Meta {
+	// 	twerr = twerr.WithMeta(k, v)
+	// }
+	// return twerr
+	return ErrorInternal("fix me")
+}
+
+func blazeErrorFromIntermediary(status int, msg string, bodyOrLocation string) Error {
+	// do something with it
+	return ErrorInternal(msg)
+}
+
+func isHTTPRedirect(status int) bool {
+	return status >= 300 && status <= 399
 }

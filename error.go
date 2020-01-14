@@ -254,7 +254,7 @@ func (e *InternalErrorType) Error() string {
 	if e.err != nil {
 		return e.err.Error()
 	}
-	return "unknown"
+	return "internal"
 }
 
 // Unwrap implements the wrappable error

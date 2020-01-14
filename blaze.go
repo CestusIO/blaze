@@ -28,7 +28,11 @@
 
 package blaze
 
-import "github.com/go-chi/chi"
+import (
+	"net/http"
+
+	"github.com/go-chi/chi"
+)
 
 // Server defines the interface of blazeserver
 type Server interface {
@@ -41,4 +45,16 @@ type ClientOption func(*ClientOptions)
 
 // ClientOptions encapsulate the configurable parameters on a Blaze client.
 type ClientOptions struct {
+}
+
+// HTTPClient is the interface used by generated clients to send HTTP requests.
+// It is fulfilled by *(net/http).Client, which is sufficient for most users.
+// Users can provide their own implementation for special retry policies.
+//
+// HTTPClient implementations should not follow redirects. Redirects are
+// automatically disabled if *(net/http).Client is passed to client
+// constructors. See the withoutRedirects function in this file for more
+// details.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
 }

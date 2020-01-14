@@ -118,10 +118,81 @@ var _ = Describe("Error", func() {
 				blaze.ErrorDataLoss(), 500),
 		)
 	})
-	// It("Returns the correct cause", func() {
-	// 	rootCause := fmt.Errorf("this is only a test")
-	// 	blerr := blaze.InternalErrorWith(rootCause)
-	// 	cause := errors.Cause(blerr)
-	// 	Expect(cause).To(Equal(rootCause))
-	// })
+	Context("ErrorRegistry", func() {
+		It("can construct objects", func() {
+			oe := blaze.ErrorRequiredArgument("arg")
+			se, err := blaze.ErrorToErrorJSON(oe)
+			ej := blaze.ErrorJSON{
+				Code: "400",
+				Msg:  "arg is_required",
+				Type: "*blaze.InvalidArgumentErrorType",
+				Meta: map[string]string{"argument": "arg"},
+			}
+			Expect(err).To(BeNil())
+			Expect(se).To(Equal(ej))
+			ue, err := blaze.ErrorJSONToError(ej)
+			Expect(err).To(BeNil())
+			Expect(ue).To(Equal(oe))
+		})
+		It("can construct Internal error with", func() {
+			oe := blaze.ErrorInternalWith(errors.New("internal error"), "arg")
+			se, err := blaze.ErrorToErrorJSON(oe)
+			ej := blaze.ErrorJSON{
+				Code: "500",
+				Msg:  "arg",
+				Type: "*blaze.InternalErrorType",
+				Meta: map[string]string{"wrappedInternalError": "internal error"},
+			}
+			Expect(err).To(BeNil())
+			Expect(se).To(Equal(ej))
+			ue, err := blaze.ErrorJSONToError(ej)
+			Expect(err).To(BeNil())
+			Expect(ue).To(Equal(oe))
+		})
+		var _ = DescribeTable("Error Serialisation ",
+			func(e blaze.Error) {
+				se, err := blaze.ErrorToErrorJSON(e)
+				Expect(err).To(BeNil())
+				ue, err := blaze.ErrorJSONToError(se)
+				Expect(err).To(BeNil())
+				Expect(ue).To(Equal(e))
+			},
+			Entry("CanceledErrorType",
+				blaze.ErrorCanceled()),
+			Entry("InvalidArgumentErrorType",
+				blaze.ErrorInvalidArgument("", "")),
+			Entry("MalformedErrorType",
+				blaze.ErrorMalformed("")),
+			Entry("DeadlineExceededErrorType",
+				blaze.ErrorDeadlineExeeded()),
+			Entry("NotFoundErrorType:",
+				blaze.ErrorNotFound()),
+			Entry("BadRouteErrorType:",
+				blaze.ErrorBadRoute("")),
+			Entry("AlreadyExistsErrorType:",
+				blaze.ErrorAlreadyExists()),
+			Entry("PermissionDeniedErrorType",
+				blaze.ErrorPermissionDenied()),
+			Entry("UnauthenticatedErrorType",
+				blaze.ErrorUnauthenticated()),
+			Entry("ResourceExhaustedErrorType",
+				blaze.ErrorResourceExhausted()),
+			Entry("FailedPreconditionErrorType",
+				blaze.ErrorFailedPrecondition()),
+			Entry("AbortedErrorType",
+				blaze.ErrorAborted()),
+			Entry("OutOfRangeErrorType",
+				blaze.ErrorOutOfRange()),
+			Entry("UnimplementedErrorType",
+				blaze.ErrorUnimplemented()),
+			Entry("InternalErrorType",
+				blaze.ErrorInternal("")),
+			Entry("InternalErrorType With",
+				blaze.ErrorInternalWith(errors.New("msg"), "")),
+			Entry("UnavailableErrorType",
+				blaze.ErrorUnavailable()),
+			Entry("DataLossErrorType",
+				blaze.ErrorDataLoss()),
+		)
+	})
 })
