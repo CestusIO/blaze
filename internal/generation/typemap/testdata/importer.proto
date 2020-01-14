@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package twirp.internal.gen.typemap.testdata.importer;
+package blaze.internal.generation.typemap.testdata.importer;
 
 import "root_pkg.proto";
 
