@@ -6,10 +6,10 @@ import (
 
 	"os"
 
+	"code.cestus.io/blaze/pkg/generator"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
-	"code.cestus.io/blaze/pkg/generator"
 )
 
 var (
