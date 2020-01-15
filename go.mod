@@ -12,7 +12,6 @@ require (
 	github.com/onsi/gomega v1.7.1
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.4.0
-	github.com/twitchtv/twirp v5.10.0+incompatible
 	go.uber.org/zap v1.13.0
 	golang.org/x/net v0.0.0-20191105084925-a882066a44e0 // indirect
 	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect

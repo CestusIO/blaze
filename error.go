@@ -172,7 +172,7 @@ func ServerHTTPStatusFromErrorType(err error) int {
 	case *UnauthenticatedErrorType:
 		return 401 // Unauthorized
 	case *ResourceExhaustedErrorType:
-		return 403 // Forbidden
+		return 429 // RessourceExhausted
 	case *FailedPreconditionErrorType:
 		return 412 // Precondition Failed
 	case *AbortedErrorType:
@@ -192,20 +192,13 @@ func ServerHTTPStatusFromErrorType(err error) int {
 	}
 }
 
-// #region error types
-
-// #region CanceledErrorType
-
 //CanceledErrorType indicates the operation was cancelled (typically by the caller).
 type CanceledErrorType struct{}
 
 func (e *CanceledErrorType) Error() string { return "canceled" }
 
 //ErrorCanceled constructs a canceled error
-func ErrorCanceled() Error { return NewError(&CanceledErrorType{}, "") }
-
-// #endregion
-// #region NotFoundErrorType
+func ErrorCanceled(msg string) Error { return NewError(&CanceledErrorType{}, msg) }
 
 //NotFoundErrorType indicates a common NotFound error
 type NotFoundErrorType struct{}
@@ -213,11 +206,7 @@ type NotFoundErrorType struct{}
 func (e *NotFoundErrorType) Error() string { return "not_found" }
 
 //ErrorNotFound constructs a canceled error
-func ErrorNotFound() Error { return NewError(&NotFoundErrorType{}, "") }
-
-// #endregion
-
-// #region InvalidArgumentErrorType
+func ErrorNotFound(msg string) Error { return NewError(&NotFoundErrorType{}, msg) }
 
 // InvalidArgumentErrorType indicates client specified an invalid argument. It
 // indicates arguments that are problematic regardless of the state of the
@@ -241,10 +230,6 @@ func ErrorRequiredArgument(argument string) Error {
 	return ErrorInvalidArgument(argument, "is_required")
 }
 
-// #endregion
-
-// #region InternalErrorType
-
 // InternalErrorType error is an error produced by a downstream dependency of blaze
 type InternalErrorType struct {
 	err error
@@ -254,7 +239,7 @@ func (e *InternalErrorType) Error() string {
 	if e.err != nil {
 		return e.err.Error()
 	}
-	return "unknown"
+	return "internal"
 }
 
 // Unwrap implements the wrappable error
@@ -277,19 +262,13 @@ func ErrorInternalWith(err error, msg string) Error {
 	return NewError(&InternalErrorType{err: err}, msg)
 }
 
-// #endregion
-// #region UnknownErrorType
-
 //UnknownErrorType For example handling errors raised by APIs that dont return enough error information
 type UnknownErrorType struct{}
 
 func (e *UnknownErrorType) Error() string { return "unknown" }
 
 //ErrorUnknown constructs a Unknown error
-func ErrorUnknown() Error { return NewError(&UnknownErrorType{}, "") }
-
-// #endregion
-// #region MalformedErrorType
+func ErrorUnknown(msg string) Error { return NewError(&UnknownErrorType{}, msg) }
 
 // MalformedErrorType indicates an error occured while decoding the client's request.
 // This means that the message was encoded improperly, or that there is an disagreement in message format
@@ -301,10 +280,6 @@ func (e *MalformedErrorType) Error() string { return "Malformed" }
 //ErrorMalformed constructs a malformed error
 func ErrorMalformed(msg string) Error { return NewError(&MalformedErrorType{}, msg) }
 
-// #endregion
-
-// #region DeadlineExceededErrorType
-
 //DeadlineExceededErrorType means operation expired before completion. For operations
 // that change the state of the system, this error may be returned even if the
 // operation has completed successfully (timeout).
@@ -313,10 +288,7 @@ type DeadlineExceededErrorType struct{}
 func (e *DeadlineExceededErrorType) Error() string { return "deadline_exeeded" }
 
 //ErrorDeadlineExeeded constructs a canceled error
-func ErrorDeadlineExeeded() Error { return NewError(&DeadlineExceededErrorType{}, "") }
-
-// #endregion
-// #region BadRouteErrorType
+func ErrorDeadlineExeeded(msg string) Error { return NewError(&DeadlineExceededErrorType{}, msg) }
 
 // BadRouteErrorType means that the requested URL path wasn't routable to a blaze
 // service and method. This is returned by the generated server, and usually
@@ -329,9 +301,6 @@ func (e *BadRouteErrorType) Error() string { return "bad_route" }
 //ErrorBadRoute constructs bad route error
 func ErrorBadRoute(msg string) Error { return NewError(&BadRouteErrorType{}, msg) }
 
-// #endregion
-// #region AlreadyExistsErrorType
-
 // AlreadyExistsErrorType means an attempt to create an entity failed because one
 // already exists
 type AlreadyExistsErrorType struct{}
@@ -339,10 +308,7 @@ type AlreadyExistsErrorType struct{}
 func (e *AlreadyExistsErrorType) Error() string { return "already_exists" }
 
 //ErrorAlreadyExists constructs a already exists error
-func ErrorAlreadyExists() Error { return NewError(&AlreadyExistsErrorType{}, "") }
-
-// #endregion
-// #region PermissionDeniedErrorType
+func ErrorAlreadyExists(msg string) Error { return NewError(&AlreadyExistsErrorType{}, msg) }
 
 // PermissionDeniedErrorType indicates the caller does not have permission to execute
 // the specified operation. It must not be used if the caller cannot be
@@ -351,11 +317,8 @@ type PermissionDeniedErrorType struct{}
 
 func (e *PermissionDeniedErrorType) Error() string { return "permission_denied" }
 
-//ErrorPermissionDenied constructs a already exists error
-func ErrorPermissionDenied() Error { return NewError(&PermissionDeniedErrorType{}, "") }
-
-// #endregion
-// #region UnauthenticatedErrorType
+//ErrorPermissionDenied constructs a permission denied error
+func ErrorPermissionDenied(msg string) Error { return NewError(&PermissionDeniedErrorType{}, msg) }
 
 // UnauthenticatedErrorType indicates the request does not have valid authentication
 // credentials for the operation.
@@ -364,10 +327,7 @@ type UnauthenticatedErrorType struct{}
 func (e *UnauthenticatedErrorType) Error() string { return "unauthenticated" }
 
 //ErrorUnauthenticated constructs a unauthenticated error
-func ErrorUnauthenticated() Error { return NewError(&UnauthenticatedErrorType{}, "") }
-
-// #endregion
-// #region ResourceExhaustedErrorType
+func ErrorUnauthenticated(msg string) Error { return NewError(&UnauthenticatedErrorType{}, msg) }
 
 // ResourceExhaustedErrorType indicates some resource has been exhausted, perhaps a
 // per-user quota, or perhaps the entire file system is out of space.
@@ -376,10 +336,7 @@ type ResourceExhaustedErrorType struct{}
 func (e *ResourceExhaustedErrorType) Error() string { return "resource_exhausted" }
 
 //ErrorResourceExhausted constructs a resource exhousted error
-func ErrorResourceExhausted() Error { return NewError(&ResourceExhaustedErrorType{}, "") }
-
-// #endregion
-// #region FailedPreconditionErrorType
+func ErrorResourceExhausted(msg string) Error { return NewError(&ResourceExhaustedErrorType{}, msg) }
 
 // FailedPreconditionErrorType indicates operation was rejected because the system is
 // not in a state required for the operation's execution. For example, doing
@@ -390,10 +347,7 @@ type FailedPreconditionErrorType struct{}
 func (e *FailedPreconditionErrorType) Error() string { return "failed_precondition" }
 
 //ErrorFailedPrecondition constructs a failed precondition error
-func ErrorFailedPrecondition() Error { return NewError(&FailedPreconditionErrorType{}, "") }
-
-// #endregion
-// #region AbortedErrorType
+func ErrorFailedPrecondition(msg string) Error { return NewError(&FailedPreconditionErrorType{}, msg) }
 
 // AbortedErrorType indicates the operation was aborted, typically due to a concurrency
 // issue like sequencer check failures, transaction aborts, etc.
@@ -402,10 +356,7 @@ type AbortedErrorType struct{}
 func (e *AbortedErrorType) Error() string { return "aborted" }
 
 //ErrorAborted constructs a aborted error
-func ErrorAborted() Error { return NewError(&AbortedErrorType{}, "") }
-
-// #endregion
-// #region OutOfRangeErrorType
+func ErrorAborted(msg string) Error { return NewError(&AbortedErrorType{}, msg) }
 
 // OutOfRangeErrorType means operation was attempted past the valid range. For example,
 // seeking or reading past end of a paginated collection.
@@ -422,10 +373,7 @@ type OutOfRangeErrorType struct{}
 func (e *OutOfRangeErrorType) Error() string { return "out_of_range" }
 
 //ErrorOutOfRange constructs a out of range error
-func ErrorOutOfRange() Error { return NewError(&OutOfRangeErrorType{}, "") }
-
-// #endregion
-// #region UnimplementedErrorType
+func ErrorOutOfRange(msg string) Error { return NewError(&OutOfRangeErrorType{}, msg) }
 
 // UnimplementedErrorType indicates operation is not implemented or not
 // supported/enabled in this service.
@@ -434,11 +382,7 @@ type UnimplementedErrorType struct{}
 func (e *UnimplementedErrorType) Error() string { return "unimplemented" }
 
 //ErrorUnimplemented constructs an unimplemented error
-func ErrorUnimplemented() Error { return NewError(&UnimplementedErrorType{}, "") }
-
-// #endregion
-
-// #region UnavailableErrorType
+func ErrorUnimplemented(msg string) Error { return NewError(&UnimplementedErrorType{}, msg) }
 
 // UnavailableErrorType indicates the service is currently unavailable. This is a most
 // likely a transient condition and may be corrected by retrying with a
@@ -448,10 +392,7 @@ type UnavailableErrorType struct{}
 func (e *UnavailableErrorType) Error() string { return "unavailable" }
 
 //ErrorUnavailable constructs an unavailable error
-func ErrorUnavailable() Error { return NewError(&UnavailableErrorType{}, "") }
-
-// #endregion
-// #region DataLossErrorType
+func ErrorUnavailable(msg string) Error { return NewError(&UnavailableErrorType{}, msg) }
 
 // DataLossErrorType indicates unrecoverable data loss or corruption.
 type DataLossErrorType struct{}
@@ -459,7 +400,4 @@ type DataLossErrorType struct{}
 func (e *DataLossErrorType) Error() string { return "data_loss" }
 
 //ErrorDataLoss constructs a data loss error
-func ErrorDataLoss() Error { return NewError(&DataLossErrorType{}, "") }
-
-// #endregion
-// #endregion
+func ErrorDataLoss(msg string) Error { return NewError(&DataLossErrorType{}, msg) }
