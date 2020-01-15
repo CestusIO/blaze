@@ -40,6 +40,40 @@ type Server interface {
 	MountPath() string
 }
 
+// ServerOption is a functional option for extending a Blaze server.
+type ServerOption func(*ServerOptions)
+
+// ServerOptions encapsulate the configurable parameters on a Blaze server.
+type ServerOptions struct {
+	// Uses a specific mux instead of chi.NewRouter()
+	Mux *chi.Mux
+	// Whether to render enum values as integers, as opposed to string values.
+	JSONEnumsAsInts bool
+	// Whether to render fields with zero values.
+	JSONEmitDefaults bool
+}
+
+// WithMux allows to set the chi mux to use by a server
+func WithMux(mux *chi.Mux) ServerOption {
+	return func(o *ServerOptions) {
+		o.Mux = mux
+	}
+}
+
+// WithJSONEnumsAsInts makes enums be rendered as ints instead of strings
+func WithJSONEnumsAsInts(v bool) ServerOption {
+	return func(o *ServerOptions) {
+		o.JSONEnumsAsInts = v
+	}
+}
+
+// WithJSONEmitDefaults makes JSON structs to render fields even if they are empty or the default value
+func WithJSONEmitDefaults(v bool) ServerOption {
+	return func(o *ServerOptions) {
+		o.JSONEmitDefaults = v
+	}
+}
+
 // ClientOption is a functional option for extending a Blaze client.
 type ClientOption func(*ClientOptions)
 
