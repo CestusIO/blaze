@@ -370,8 +370,8 @@ func (s *blaze) generateService(file *descriptor.FileDescriptorProto, service *d
 	s.sectionComment(servName + ` JSON Client`)
 	s.generateClient("JSON", file, service)
 
-	// Server
-	s.sectionComment(servName + ` Server`)
+	// Service
+	s.sectionComment(servName + ` Service`)
 	s.generateServer(file, service)
 	s.generateImplementInterface(file, service)
 }
@@ -405,35 +405,35 @@ func (s *blaze) generateServer(file *descriptor.FileDescriptorProto, service *de
 	s.P(`  `, "log logr.Logger")
 	s.P(`  `, "mux *chi.Mux")
 	s.P(`  `, "mountPath string")
-	s.P(`     serverOptions `, s.pkgs["blaze"], `.ServerOptions`)
+	s.P(`     serviceOptions `, s.pkgs["blaze"], `.ServiceOptions`)
 	s.P(`}`)
 	s.P()
 
-	// Constructor for server implementation
-	s.P(`func New`, servName, `Server(svc `, servName, `, log logr.Logger, opts ...`, s.pkgs["blaze"], `.ServerOption) `, s.pkgs["blaze"], `.Server {`)
-	s.P(`	serverOptions := `, s.pkgs["blaze"], `.ServerOptions{}`)
+	// Constructor for service implementation
+	s.P(`func New`, servName, `Service(svc `, servName, `, log logr.Logger, opts ...`, s.pkgs["blaze"], `.ServiceOption) `, s.pkgs["blaze"], `.Service {`)
+	s.P(`	serviceOptions := `, s.pkgs["blaze"], `.ServiceOptions{}`)
 	s.P(`	for _, o := range opts {`)
-	s.P(`		o(&serverOptions)`)
+	s.P(`		o(&serviceOptions)`)
 	s.P(`	}`)
 	s.P(`	var r *chi.Mux`)
-	s.P(`	if serverOptions.Mux != nil {`)
-	s.P(`		r = serverOptions.Mux`)
+	s.P(`	if serviceOptions.Mux != nil {`)
+	s.P(`		r = serviceOptions.Mux`)
 	s.P(`	} else {`)
 	s.P(`		r = chi.NewRouter()`)
 	s.P(`	}`)
 	s.P(``)
-	s.P(`server := `, servStruct, `{`)
+	s.P(`service := `, servStruct, `{`)
 	s.P(`log:           log,`)
 	s.P(`mux:           r,`)
-	s.P(`serverOptions: serverOptions,`)
+	s.P(`serviceOptions: serviceOptions,`)
 	s.P(`mountPath:     `, servName, `PathPrefix,`)
 	s.P(servName, `: svc,`)
 	s.P(`}`)
 	for _, method := range service.Method {
 		methName := "serve" + stringutils.CamelCase(method.GetName())
-		s.P(`r.Post("/`, method.GetName(), `", server.`, methName, `)`)
+		s.P(`r.Post("/`, method.GetName(), `", service.`, methName, `)`)
 	}
-	s.P(`return &server`)
+	s.P(`return &service`)
 	s.P(`}`)
 	s.P()
 	// Getting the mount path as package/version
@@ -507,8 +507,8 @@ func (s *blaze) generateServerJSONMethod(service *descriptor.ServiceDescriptorPr
 	s.P(`  var buf `, s.pkgs["bytes"], `.Buffer`)
 	s.P(`  marshaler := &`, s.pkgs["jsonpb"], `.Marshaler{`)
 	s.P(`		OrigName:    true,`)
-	s.P(`		EnumsAsInts: s.serverOptions.JSONEnumsAsInts,`)
-	s.P(`		EmitDefaults: s.serverOptions.JSONEmitDefaults,`)
+	s.P(`		EnumsAsInts: s.serviceOptions.JSONEnumsAsInts,`)
+	s.P(`		EmitDefaults: s.serviceOptions.JSONEmitDefaults,`)
 	s.P(`  }`)
 	s.P(`  if err = marshaler.Marshal(&buf, respContent); err != nil {`)
 	s.P(`    `, s.pkgs["blaze"], `.ServerWriteError(ctx, resp, `, s.pkgs["blaze"], `.ErrorInternalWith(err, "failed to marshal json response"), s.log)`)
@@ -898,7 +898,7 @@ func serviceName(service *descriptor.ServiceDescriptorProto) string {
 }
 
 func serviceStruct(service *descriptor.ServiceDescriptorProto) string {
-	return unexported(serviceName(service)) + "Server"
+	return unexported(serviceName(service)) + "Service"
 }
 
 func methodName(method *descriptor.MethodDescriptorProto) string {
