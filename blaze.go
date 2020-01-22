@@ -34,17 +34,17 @@ import (
 	"github.com/go-chi/chi"
 )
 
-// Server defines the interface of blazeserver
-type Server interface {
+// Service defines the interface of blazeservice
+type Service interface {
 	Mux() *chi.Mux
 	MountPath() string
 }
 
-// ServerOption is a functional option for extending a Blaze server.
-type ServerOption func(*ServerOptions)
+// ServiceOption is a functional option for extending a Blaze service.
+type ServiceOption func(*ServiceOptions)
 
-// ServerOptions encapsulate the configurable parameters on a Blaze server.
-type ServerOptions struct {
+// ServiceOptions encapsulate the configurable parameters on a Blaze service.
+type ServiceOptions struct {
 	// Uses a specific mux instead of chi.NewRouter()
 	Mux *chi.Mux
 	// Whether to render enum values as integers, as opposed to string values.
@@ -53,23 +53,23 @@ type ServerOptions struct {
 	JSONEmitDefaults bool
 }
 
-// WithMux allows to set the chi mux to use by a server
-func WithMux(mux *chi.Mux) ServerOption {
-	return func(o *ServerOptions) {
+// WithMux allows to set the chi mux to use by a service
+func WithMux(mux *chi.Mux) ServiceOption {
+	return func(o *ServiceOptions) {
 		o.Mux = mux
 	}
 }
 
 // WithJSONEnumsAsInts makes enums be rendered as ints instead of strings
-func WithJSONEnumsAsInts(v bool) ServerOption {
-	return func(o *ServerOptions) {
+func WithJSONEnumsAsInts(v bool) ServiceOption {
+	return func(o *ServiceOptions) {
 		o.JSONEnumsAsInts = v
 	}
 }
 
 // WithJSONEmitDefaults makes JSON structs to render fields even if they are empty or the default value
-func WithJSONEmitDefaults(v bool) ServerOption {
-	return func(o *ServerOptions) {
+func WithJSONEmitDefaults(v bool) ServiceOption {
+	return func(o *ServiceOptions) {
 		o.JSONEmitDefaults = v
 	}
 }
