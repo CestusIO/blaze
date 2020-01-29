@@ -31,6 +31,7 @@ package blaze
 import (
 	"net/http"
 
+	"code.cestus.io/blaze/pkg/blazetrace"
 	"github.com/go-chi/chi"
 )
 
@@ -51,6 +52,8 @@ type ServiceOptions struct {
 	JSONEnumsAsInts bool
 	// Whether to render fields with zero values.
 	JSONEmitDefaults bool
+	// Trace implementation for distributed tracing
+	Trace blazetrace.ServiceTracer
 }
 
 // WithMux allows to set the chi mux to use by a service
@@ -74,11 +77,20 @@ func WithJSONEmitDefaults(v bool) ServiceOption {
 	}
 }
 
+// WithServiceTracer replaces the default tracer
+func WithServiceTracer(trace blazetrace.ServiceTracer) ServiceOption {
+	return func(o *ServiceOptions) {
+		o.Trace = trace
+	}
+}
+
 // ClientOption is a functional option for extending a Blaze client.
 type ClientOption func(*ClientOptions)
 
 // ClientOptions encapsulate the configurable parameters on a Blaze client.
 type ClientOptions struct {
+	// Trace implementation for distributed tracing
+	Trace blazetrace.ClientTracer
 }
 
 // HTTPClient is the interface used by generated clients to send HTTP requests.

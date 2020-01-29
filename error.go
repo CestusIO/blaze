@@ -31,6 +31,8 @@ package blaze
 import (
 	"errors"
 	"fmt"
+
+	"google.golang.org/grpc/codes"
 )
 
 // Error represents an error in a Blaze service call.
@@ -189,6 +191,59 @@ func ServerHTTPStatusFromErrorType(err error) int {
 		return 500 // Internal Server Error
 	default:
 		return 0 // Invalid!
+	}
+}
+
+// GrpcCodeFromErrorType converts a blaze error into a grpc error code
+func GrpcCodeFromErrorType(err error) codes.Code {
+	if err == nil {
+		return codes.OK
+	}
+	switch err.(type) {
+	case Error:
+		{
+			err = errors.Unwrap(err)
+		}
+	}
+	switch err.(type) {
+	case *CanceledErrorType:
+		return codes.Canceled // RequestTimeout
+	case *UnknownErrorType:
+		return codes.Unknown // Internal Server Error
+	case *InvalidArgumentErrorType:
+		return codes.InvalidArgument // BadRequest
+	case *MalformedErrorType:
+		return codes.InvalidArgument // BadRequest
+	case *DeadlineExceededErrorType:
+		return codes.DeadlineExceeded // RequestTimeout
+	case *NotFoundErrorType:
+		return codes.NotFound // Not Found
+	case *BadRouteErrorType:
+		return codes.NotFound // Not Found
+	case *AlreadyExistsErrorType:
+		return codes.AlreadyExists // Conflict
+	case *PermissionDeniedErrorType:
+		return codes.PermissionDenied // Forbidden
+	case *UnauthenticatedErrorType:
+		return codes.Unauthenticated // Unauthorized
+	case *ResourceExhaustedErrorType:
+		return codes.ResourceExhausted // RessourceExhausted
+	case *FailedPreconditionErrorType:
+		return codes.FailedPrecondition // Precondition Failed
+	case *AbortedErrorType:
+		return codes.Aborted // Conflict
+	case *OutOfRangeErrorType:
+		return codes.OutOfRange // Bad Request
+	case *UnimplementedErrorType:
+		return codes.Unimplemented // Not Implemented
+	case *InternalErrorType:
+		return codes.Internal // Internal Server Error
+	case *UnavailableErrorType:
+		return codes.Unavailable // Service Unavailable
+	case *DataLossErrorType:
+		return codes.DataLoss // Internal Server Error
+	default:
+		return 2 // Unknown!
 	}
 }
 
