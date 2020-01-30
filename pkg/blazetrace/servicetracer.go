@@ -37,6 +37,7 @@ type ServiceTracer interface {
 
 type serverTracer struct {
 	tr trace.Tracer
+	b3 B3
 }
 
 // ParentSpanDescriptor dexcribes the parent span
@@ -54,6 +55,11 @@ func (s *serverTracer) Extract(req *http.Request) (context.Context, *http.Reques
 		entries:     entries,
 	}
 	req = req.WithContext(distributedcontext.NewContext(req.Context()))
+
+	if !psd.spanContext.IsValid() {
+		spContext, _ := s.b3.Extract(req.Context(), req.Header)
+		psd.spanContext = spContext
+	}
 	return req.Context(), req, psd
 }
 
