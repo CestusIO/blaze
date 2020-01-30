@@ -284,15 +284,15 @@ func (s *blaze) generateImports(file *descriptor.FileDescriptorProto) {
 	}
 
 	s.P(`import `, s.pkgs["bytes"], ` "bytes"`)
-	// strings package is only used in generated method code.
+	// some packages is only used in generated method code.
 	if !allServicesEmpty {
 		s.P(`import `, s.pkgs["strings"], ` "strings"`)
+		s.P(`import `, s.pkgs["fmt"], ` "fmt"`)
+		s.P(`import `, s.pkgs["strconv"], ` "strconv"`)
 	}
 	s.P(`import `, s.pkgs["context"], ` "context"`)
-	s.P(`import `, s.pkgs["fmt"], ` "fmt"`)
 	s.P(`import `, s.pkgs["ioutil"], ` "io/ioutil"`)
 	s.P(`import `, s.pkgs["http"], ` "net/http"`)
-	s.P(`import `, s.pkgs["strconv"], ` "strconv"`)
 	s.P()
 	s.P(`import `, s.pkgs["jsonpb"], ` "github.com/golang/protobuf/jsonpb"`)
 	s.P(`import `, s.pkgs["proto"], ` "github.com/golang/protobuf/proto"`)
