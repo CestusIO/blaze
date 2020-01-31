@@ -34,11 +34,13 @@ type ClientTracer interface {
 
 type clientTracer struct {
 	tr trace.Tracer
+	b3 B3
 }
 
 func (s *clientTracer) Inject(ctx context.Context, r *http.Request) (context.Context, *http.Request) {
 	ctx, req := httptrace.W3C(ctx, r)
 	httptrace.Inject(ctx, req)
+	s.b3.Inject(ctx, req.Header)
 	return ctx, req
 }
 
