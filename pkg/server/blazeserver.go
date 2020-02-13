@@ -217,13 +217,13 @@ func (s *blazeServerGroup) Start() {
 	for _, srv := range s.servers {
 		srv.Start(s.interrupt, &s.waitGroup)
 	}
-}
-
-func (s *blazeServerGroup) GetTerminationNotfier() chan struct{} {
 	go func(t chan struct{}) {
 		s.waitGroup.Wait()
 		close(t)
 	}(s.terminated)
+}
+
+func (s *blazeServerGroup) GetTerminationNotfier() chan struct{} {
 	return s.terminated
 }
 
@@ -240,6 +240,9 @@ func NewBlazeServerGroup(interrupt chan struct{}, terminated chan struct{}, serv
 		terminated: terminated,
 	}
 	sg.servers = append(sg.servers, servers...)
+	if sg.terminated == nil {
+		sg.terminated = make(chan struct{})
+	}
 	return &sg
 }
 
@@ -255,6 +258,9 @@ func NewServerGroupFromBuilders(interrupt chan struct{}, terminated chan struct{
 			svr.Walk()
 		}
 		sg.servers = append(sg.servers, svr)
+	}
+	if sg.terminated == nil {
+		sg.terminated = make(chan struct{})
 	}
 	return &sg
 }
