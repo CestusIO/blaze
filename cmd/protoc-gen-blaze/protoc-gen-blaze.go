@@ -8,13 +8,13 @@ import (
 
 	"code.cestus.io/blaze/pkg/generator"
 	"github.com/go-logr/logr"
-	"github.com/go-logr/zapr"
+	"github.com/magicmoose/zapr"
 	"go.uber.org/zap"
 )
 
 var (
 	// Version is the version of the application
-	Version string = "v0.0.9"
+	Version string = "v0.1.0"
 	// BuildTime is the time the application was build
 	BuildTime string
 )
