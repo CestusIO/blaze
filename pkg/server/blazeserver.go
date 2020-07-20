@@ -22,13 +22,37 @@ type Option func(*Options)
 // Options encapsulate the configurable parameters on a Blaze server.
 type Options struct {
 	// Uses a specific mux instead of chi.NewRouter()
-	Mux *chi.Mux
+	Mux          *chi.Mux
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+	idleTimeout  time.Duration
 }
 
 // WithMux allows to set the chi mux to use by a server
 func WithMux(mux *chi.Mux) Option {
 	return func(o *Options) {
 		o.Mux = mux
+	}
+}
+
+// WithReadTimeout allows to set the ReadTimeout to use by a server
+func WithReadTimeout(timeout time.Duration) Option {
+	return func(o *Options) {
+		o.readTimeout = timeout
+	}
+}
+
+// WithWriteTimeout allows to set the WriteTimeout to use by a server
+func WithWriteTimeout(timeout time.Duration) Option {
+	return func(o *Options) {
+		o.writeTimeout = timeout
+	}
+}
+
+// WithIdleTimeout allows to set the IdleTimeout to use by a server
+func WithIdleTimeout(timeout time.Duration) Option {
+	return func(o *Options) {
+		o.idleTimeout = timeout
 	}
 }
 
@@ -89,6 +113,16 @@ func (s *blazeServerBuilder) Build() BlazeServer {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  15 * time.Second,
+	}
+
+	if s.serviceOptions.idleTimeout != 0 {
+		srv.IdleTimeout = s.serviceOptions.idleTimeout
+	}
+	if s.serviceOptions.readTimeout != 0 {
+		srv.ReadTimeout = s.serviceOptions.readTimeout
+	}
+	if s.serviceOptions.writeTimeout != 0 {
+		srv.WriteTimeout = s.serviceOptions.writeTimeout
 	}
 
 	return &blazeServer{s.log, &srv}
