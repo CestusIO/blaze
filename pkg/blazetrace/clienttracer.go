@@ -5,16 +5,17 @@ import (
 
 	"net/http"
 
-	"go.opentelemetry.io/otel/api/core"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/key"
-	"go.opentelemetry.io/otel/api/trace"
-	"go.opentelemetry.io/otel/plugin/httptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
 	//ClientName is a trace attribute for the service name
-	ClientName = key.New("client.name")
+	ClientName = attribute.Key("client.name")
 )
 
 //ClientTraceOptions
@@ -28,23 +29,24 @@ type ClientTraceOption func(*ClientTraceOptions)
 // ClientTracer allows tracing of blaze services
 type ClientTracer interface {
 	Inject(ctx context.Context, r *http.Request) (context.Context, *http.Request)
-	StartSpan(ctx context.Context, spanName string, attrs []core.KeyValue, opts ...trace.StartOption) (context.Context, trace.Span)
+	StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span)
 	EndSpan(span trace.Span)
 }
 
 type clientTracer struct {
 	tr trace.Tracer
-	b3 B3
+	b3 b3.B3
 }
 
 func (s *clientTracer) Inject(ctx context.Context, r *http.Request) (context.Context, *http.Request) {
-	ctx, req := httptrace.W3C(ctx, r)
-	httptrace.Inject(ctx, req)
-	s.b3.Inject(ctx, req.Header)
+	ctx, req := otelhttptrace.W3C(ctx, r)
+	otelhttptrace.Inject(ctx, req)
+	carrier := propagation.HeaderCarrier(req.Header)
+	s.b3.Inject(ctx, carrier)
 	return ctx, req
 }
 
-func (s *clientTracer) StartSpan(ctx context.Context, spanName string, attrs []core.KeyValue, opts ...trace.StartOption) (context.Context, trace.Span) {
+func (s *clientTracer) StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span) {
 	opts = append(opts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindClient))
 	return s.tr.Start(ctx, spanName, opts...)
 }
@@ -56,7 +58,7 @@ func (s *clientTracer) EndSpan(span trace.Span) {
 // NewClientTracer creates a new tracer
 func NewClientTracer(opts ...ClientTraceOption) ClientTracer {
 	o := &ClientTraceOptions{
-		tr: global.TraceProvider().Tracer("code.cestus.io/blazetrace"),
+		tr: otel.GetTracerProvider().Tracer("code.cestus.io/blazetrace"),
 	}
 	for _, opt := range opts {
 		opt(o)
