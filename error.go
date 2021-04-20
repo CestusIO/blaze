@@ -32,6 +32,7 @@ import (
 	"errors"
 	"fmt"
 
+	otelc "go.opentelemetry.io/otel/codes"
 	"google.golang.org/grpc/codes"
 )
 
@@ -192,6 +193,14 @@ func ServerHTTPStatusFromErrorType(err error) int {
 	default:
 		return 0 // Invalid!
 	}
+}
+
+// OtelCodeFromErrorType converts to the open telemetry codes they are not using instead of GRPC.Code
+func OtelCodeFromErrorType(err error) otelc.Code {
+	if err == nil {
+		return otelc.Ok
+	}
+	return otelc.Error
 }
 
 // GrpcCodeFromErrorType converts a blaze error into a grpc error code
