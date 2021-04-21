@@ -34,7 +34,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -164,7 +163,7 @@ func ErrorFromResponse(resp *http.Response) Error {
 		return blazeErrorFromIntermediary(statusCode, msg, location)
 	}
 
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	respBodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ErrorInternalWith(err, "failed to read server error response body")
 	}
@@ -210,7 +209,7 @@ func blazeErrorFromIntermediary(status int, msg string, bodyOrLocation string) E
 			blerr = blerr.WithMeta("code", strconv.Itoa(status))
 		}
 	}
-	return ErrorInternal(msg)
+	return blerr
 }
 
 func isHTTPRedirect(status int) bool {

@@ -178,9 +178,7 @@ func (s *blazeServer) Start(interrupt chan struct{}, wg *sync.WaitGroup) {
 				s.l.Error(err, "Could not listen on", "addr", s.Addr)
 			}
 		}()
-		select {
-		case <-interrupt:
-		}
+		<-interrupt
 		s.gracefullShutdown()
 	}(interrupt, wg)
 }
@@ -262,9 +260,7 @@ func (s *blazeServerGroup) GetTerminationNotfier() chan struct{} {
 }
 
 func (s *blazeServerGroup) Wait() {
-	select {
-	case <-s.GetTerminationNotfier():
-	}
+	<-s.GetTerminationNotfier()
 }
 
 //NewBlazeServerGroup creates a new server group
