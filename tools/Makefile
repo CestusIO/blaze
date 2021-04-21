@@ -1,7 +1,6 @@
 .PHONY: generate
 ## Install tools
 all: 
-	gobin github.com/myitcv/gobin
-	gobin github.com/google/wire/cmd/wire
-	gobin github.com/matryer/moq
-	gobin google.golang.org/protobuf/cmd/protoc-gen-go
+	go install github.com/google/wire/cmd/wire@v0.5.0
+	go install github.com/matryer/moq@v0.2.1
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26.0

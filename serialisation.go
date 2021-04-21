@@ -36,9 +36,8 @@ func ErrorToErrorJSON(e Error) (ErrorJSON, error) {
 
 		}
 	}
-	switch err.(type) {
+	switch ie := err.(type) {
 	case *InternalErrorType:
-		ie := err.(*InternalErrorType)
 		if ie.err != nil {
 			be.Meta["wrappedInternalError"] = err.Error()
 		}
@@ -101,5 +100,5 @@ func (r errorRegistry) Contruct(name string, msg string) (Error, error) {
 		e := cf(msg)
 		return e, nil
 	}
-	return nil, errors.New("Not Registered")
+	return nil, errors.New("not registered")
 }
