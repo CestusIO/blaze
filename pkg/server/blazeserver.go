@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"code.cestus.io/blaze"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
 )
 

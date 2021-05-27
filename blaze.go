@@ -32,7 +32,7 @@ import (
 	"net/http"
 
 	"code.cestus.io/blaze/pkg/blazetrace"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 // Service defines the interface of blazeservice
@@ -103,4 +103,10 @@ type ClientOptions struct {
 // details.
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
+}
+
+// NewTracingClient is a convenience function to create an http client with tracing capabilities
+func NewTracingClient(client *http.Client) *http.Client {
+	client.Transport = blazetrace.OtelClientTrace(client.Transport)
+	return client
 }

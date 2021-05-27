@@ -51,7 +51,7 @@ var (
 	httpPackage         goImportPath = protogen.GoImportPath("net/http")
 	protoJSONPackage    goImportPath = protogen.GoImportPath("google.golang.org/protobuf/encoding/protojson")
 	logrPackage         goImportPath = protogen.GoImportPath("github.com/go-logr/logr")
-	chiPackage          goImportPath = protogen.GoImportPath("github.com/go-chi/chi")
+	chiPackage          goImportPath = protogen.GoImportPath("github.com/go-chi/chi/v5")
 	blazePackage        goImportPath = protogen.GoImportPath("code.cestus.io/blaze")
 	blazetracePackage   goImportPath = protogen.GoImportPath("code.cestus.io/blaze/pkg/blazetrace")
 )
@@ -344,6 +344,7 @@ func (s *Blaze) generateClient(name string, g *protogen.GeneratedFile, file *fil
 
 		g.P(`func (s *`, structName, `) `, methName, `(ctx `, g.QualifiedGoIdent(contextPackage.Ident("Context")), `, in *`, g.QualifiedGoIdent(method.Input.GoIdent), `) (*`, g.QualifiedGoIdent(method.Output.GoIdent), `, error) {`)
 		g.P(`  ctx, span := s.trace.StartSpan(ctx, "`, methName, `", `, g.QualifiedGoIdent(blazetracePackage.Ident("WithAttributes")), `(`, g.QualifiedGoIdent(blazetracePackage.Ident("ClientName")), `.String("`, servName, `")))`)
+		g.P(`  ctx = s.trace.AnnotateWithClientTrace(ctx)`)
 		g.P(`  defer s.trace.EndSpan(span)`)
 		g.P(`  out := new(`, g.QualifiedGoIdent(method.Output.GoIdent), `)`)
 		g.P(`  err := s.do`, name, `Request(ctx, s.client, s.urls[`, strconv.Itoa(i), `], in, out)`)
@@ -377,8 +378,6 @@ func (s *Blaze) generateClient(name string, g *protogen.GeneratedFile, file *fil
 		g.P(`    return `, g.QualifiedGoIdent(blazePackage.Ident("ErrorInternalWith")), `(err, "could not build request")`)
 		g.P(`  }`)
 		g.P()
-		g.P(`  ctx, req = s.trace.Inject(ctx, req)`)
-		g.P(`  req = req.WithContext(ctx)`)
 		g.P(`  resp, err := client.Do(req)`)
 		g.P(`  if err != nil {`)
 		g.P(`    return `, g.QualifiedGoIdent(blazePackage.Ident("ErrorInternalWith")), `(err, "failed to do request")`)
@@ -432,8 +431,6 @@ func (s *Blaze) generateClient(name string, g *protogen.GeneratedFile, file *fil
 		g.P(`    return `, g.QualifiedGoIdent(blazePackage.Ident("ErrorInternalWith")), `(err, "could not build request")`)
 		g.P(`  }`)
 		g.P()
-		g.P(`  ctx, req = s.trace.Inject(ctx, req)`)
-		g.P(`  req = req.WithContext(ctx)`)
 		g.P(`  resp, err := client.Do(req)`)
 		g.P(`  if err != nil {`)
 		g.P(`    return `, g.QualifiedGoIdent(blazePackage.Ident("ErrorInternalWith")), `(err, "failed to do request")`)
@@ -508,9 +505,10 @@ func (s *Blaze) generateServer(g *protogen.GeneratedFile, file *fileInfo, servic
 	g.P(`   	serviceTracer:  serviceOptions.Trace,`)
 	g.P(`       `, servName, `: svc,`)
 	g.P(`}`)
+	g.P(`r.Use(service.serviceTracer.TracingMiddleware("`, servName, `"))`)
 	for _, method := range service.Methods {
 		methName := "serve" + method.GoName
-		g.P(`r.Post("/`, method.GoName, `", service.`, methName, `)`)
+		g.P(`r.Post("/`, method.GoName, `",service.`, methName, `)`)
 	}
 	g.P(`return &service`)
 	g.P(`}`)
@@ -528,11 +526,12 @@ func (s *Blaze) generateServer(g *protogen.GeneratedFile, file *fileInfo, servic
 func (s *Blaze) generateServerMethod(g *protogen.GeneratedFile, service *protogen.Service, method *protogen.Method) {
 	methName := method.GoName
 	servStruct := serviceStruct(service)
-	servName := service.GoName
+	//servName := service.GoName
 	g.P(`func (s *`, servStruct, `) serve`, methName, `(resp `, g.QualifiedGoIdent(httpPackage.Ident("ResponseWriter")), `, req *`, g.QualifiedGoIdent(httpPackage.Ident("Request")), `) {`)
-	g.P(`  ctx, req, psd := s.serviceTracer.Extract(req)`)
-	g.P(`  ctx, span := s.serviceTracer.StartSpan(ctx, "`, methName, `", psd,  `, g.QualifiedGoIdent(blazetracePackage.Ident("WithAttributes")), `( `, g.QualifiedGoIdent(blazetracePackage.Ident("ServiceName")), `.String("`, servName, `")))`)
-	g.P(`  defer s.serviceTracer.EndSpan(span)`)
+	g.P(`ctx := req.Context()`)
+	//g.P(`  ctx, req, psd := s.serviceTracer.Extract(req)`)
+	//g.P(`  ctx, span := s.serviceTracer.StartSpan(ctx, "`, methName, `", psd,  `, g.QualifiedGoIdent(blazetracePackage.Ident("WithAttributes")), `( `, g.QualifiedGoIdent(blazetracePackage.Ident("ServiceName")), `.String("`, servName, `")))`)
+	//g.P(`  defer s.serviceTracer.EndSpan(span)`)
 	g.P(`  header := req.Header.Get("Content-Type")`)
 	g.P(`  i := `, g.QualifiedGoIdent(stringsPackage.Ident("Index")), `(header, ";")`)
 	g.P(`  if i == -1 {`)
