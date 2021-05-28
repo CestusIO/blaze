@@ -4,25 +4,20 @@ import (
 	"context"
 	"net/http"
 
-	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
-	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/baggage"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
 
-var (
-	//ServiceName is a trace attribute for the service name
-	ServiceName = attribute.Key("service.name")
-	//EmptyParentSpanDescriptor is a descritor for an empty span
-	EmptyParentSpanDescriptor = ParentSpanDescriptor{}
+const (
+	MuxRouteKey = attribute.Key("mux.routes")
 )
 
 //ServiceTraceOptions
 type ServiceTraceOptions struct {
-	tr trace.Tracer
+	tr  trace.Tracer
+	tmw func(string) func(next http.Handler) http.Handler
+	itf func(ctx context.Context) context.Context
 }
 
 //ServiceTraceOption
@@ -30,43 +25,32 @@ type ServiceTraceOption func(*ServiceTraceOptions)
 
 // ServiceTracer allows tracing of blaze services
 type ServiceTracer interface {
-	Extract(r *http.Request) (context.Context, *http.Request, ParentSpanDescriptor)
-	StartSpan(ctx context.Context, spanName string, psd ParentSpanDescriptor, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span)
+	InjectTracer(ctx context.Context) context.Context
+	TracingMiddleware(service string) func(next http.Handler) http.Handler
+	StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span)
 	EndSpan(span trace.Span)
 }
 
+var OtelTracingMiddleware = func(name string) func(next http.Handler) http.Handler {
+	return Middleware(name)
+}
+
 type serverTracer struct {
-	tr trace.Tracer
-	b3 b3.B3
+	tr  trace.Tracer
+	tmw func(string) func(next http.Handler) http.Handler
+	itf func(ctx context.Context) context.Context
 }
 
-// ParentSpanDescriptor dexcribes the parent span
-type ParentSpanDescriptor struct {
-	spanContext trace.SpanContext
-	attrs       []attribute.KeyValue
-	entries     []attribute.KeyValue
+// TracingMiddleware instantiates the tracing middleware
+func (s *serverTracer) TracingMiddleware(service string) func(next http.Handler) http.Handler {
+	return s.tmw(service)
+}
+func (s *serverTracer) InjectTracer(ctx context.Context) context.Context {
+	return s.itf(ctx)
 }
 
-func (s *serverTracer) Extract(req *http.Request) (context.Context, *http.Request, ParentSpanDescriptor) {
-	attrs, entries, sctx := otelhttptrace.Extract(req.Context(), req)
-	psd := ParentSpanDescriptor{
-		spanContext: sctx,
-		attrs:       attrs,
-		entries:     entries,
-	}
-	req = req.WithContext(baggage.ContextWithValues(req.Context()))
-
-	if !psd.spanContext.IsValid() {
-		carrier := propagation.HeaderCarrier(req.Header)
-		spContext := s.b3.Extract(req.Context(), carrier)
-		psd.spanContext = trace.SpanContextFromContext(spContext)
-	}
-	return req.Context(), req, psd
-}
-
-func (s *serverTracer) StartSpan(ctx context.Context, spanName string, psd ParentSpanDescriptor, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span) {
-	attrs = append(attrs, psd.attrs...)
-	opts = append(opts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindServer))
+func (s *serverTracer) StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span) {
+	opts = append(opts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindClient))
 	return s.tr.Start(ctx, spanName, opts...)
 }
 
@@ -83,7 +67,18 @@ func NewServiceTracer(opts ...ServiceTraceOption) ServiceTracer {
 		opt(o)
 	}
 	st := &serverTracer{
-		tr: o.tr,
+		tr:  o.tr,
+		tmw: o.tmw,
+		itf: o.itf,
+	}
+	// set defaults if needed
+	if st.tmw == nil {
+		st.tmw = OtelTracingMiddleware
+	}
+	if st.itf == nil {
+		st.itf = func(ctx context.Context) context.Context {
+			return WithOtelTracer(ctx, st.tr)
+		}
 	}
 	return st
 }
@@ -92,6 +87,20 @@ func NewServiceTracer(opts ...ServiceTraceOption) ServiceTracer {
 func WithTracer(tr trace.Tracer) ServiceTraceOption {
 	return func(opts *ServiceTraceOptions) {
 		opts.tr = tr
+	}
+}
+
+// WithInjectTracerFunction sets a specific inject tracer function
+func WithInjectTracerFunction(itf func(ctx context.Context) context.Context) ServiceTraceOption {
+	return func(opts *ServiceTraceOptions) {
+		opts.itf = itf
+	}
+}
+
+// WithTracingMiddleware sets a specific tracing middleware
+func WithTracingMiddleware(tmw func(string) func(next http.Handler) http.Handler) ServiceTraceOption {
+	return func(opts *ServiceTraceOptions) {
+		opts.tmw = tmw
 	}
 }
 

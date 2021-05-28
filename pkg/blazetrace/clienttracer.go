@@ -3,19 +3,17 @@ package blazetrace
 import (
 	"context"
 
-	"net/http"
-
 	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
-	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/semconv"
 	"go.opentelemetry.io/otel/trace"
+	"net/http/httptrace"
 )
 
 var (
 	//ClientName is a trace attribute for the service name
-	ClientName = attribute.Key("client.name")
+	ClientName = semconv.PeerServiceKey
 )
 
 //ClientTraceOptions
@@ -28,22 +26,13 @@ type ClientTraceOption func(*ClientTraceOptions)
 
 // ClientTracer allows tracing of blaze services
 type ClientTracer interface {
-	Inject(ctx context.Context, r *http.Request) (context.Context, *http.Request)
 	StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span)
 	EndSpan(span trace.Span)
+	AnnotateWithClientTrace(ctx context.Context) context.Context
 }
 
 type clientTracer struct {
 	tr trace.Tracer
-	b3 b3.B3
-}
-
-func (s *clientTracer) Inject(ctx context.Context, r *http.Request) (context.Context, *http.Request) {
-	ctx, req := otelhttptrace.W3C(ctx, r)
-	otelhttptrace.Inject(ctx, req)
-	carrier := propagation.HeaderCarrier(req.Header)
-	s.b3.Inject(ctx, carrier)
-	return ctx, req
 }
 
 func (s *clientTracer) StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span) {
@@ -53,6 +42,10 @@ func (s *clientTracer) StartSpan(ctx context.Context, spanName string, attrs []a
 
 func (s *clientTracer) EndSpan(span trace.Span) {
 	span.End()
+}
+
+func (s *clientTracer) AnnotateWithClientTrace(ctx context.Context) context.Context {
+	return httptrace.WithClientTrace(ctx, otelhttptrace.NewClientTrace(ctx))
 }
 
 // NewClientTracer creates a new tracer
