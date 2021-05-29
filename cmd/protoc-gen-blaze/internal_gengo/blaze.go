@@ -529,6 +529,7 @@ func (s *Blaze) generateServerMethod(g *protogen.GeneratedFile, service *protoge
 	//servName := service.GoName
 	g.P(`func (s *`, servStruct, `) serve`, methName, `(resp `, g.QualifiedGoIdent(httpPackage.Ident("ResponseWriter")), `, req *`, g.QualifiedGoIdent(httpPackage.Ident("Request")), `) {`)
 	g.P(`ctx := req.Context()`)
+	g.P(`ctx = s.serviceTracer.InjectTracer(ctx)`)
 	//g.P(`  ctx, req, psd := s.serviceTracer.Extract(req)`)
 	//g.P(`  ctx, span := s.serviceTracer.StartSpan(ctx, "`, methName, `", psd,  `, g.QualifiedGoIdent(blazetracePackage.Ident("WithAttributes")), `( `, g.QualifiedGoIdent(blazetracePackage.Ident("ServiceName")), `.String("`, servName, `")))`)
 	//g.P(`  defer s.serviceTracer.EndSpan(span)`)
