@@ -75,6 +75,28 @@ func NewGenerator(log logr.Logger, version string) *Blaze {
 	return s
 }
 
+func (s *Blaze) GenerateSampleFile(gen *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
+	if len(file.Services) == 0 {
+		return nil
+	}
+	filename := fmt.Sprint(file.GeneratedFilenamePrefix, "_sample", ".blaze.go")
+	g := gen.NewGeneratedFile(filename, file.GoImportPath)
+	f := newFileInfo(file)
+	s.genStandaloneComments(g, f, fieldnum.FileDescriptorProto_Syntax)
+	s.genGeneratedHeader(gen, g, f)
+	s.genStandaloneComments(g, f, fieldnum.FileDescriptorProto_Package)
+	g.P("package ", f.GoPackageName)
+	g.P()
+	for i, imps := 0, f.Desc.Imports(); i < imps.Len(); i++ {
+		s.genImport(gen, g, f, imps.Get(i))
+	}
+
+	for _, service := range f.Services {
+		s.genServiceSample(gen, f, g, service)
+	}
+	return g
+}
+
 // GenerateFile generates the contents of a .pb.go file.
 func (s *Blaze) GenerateFile(gen *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
 	if len(file.Services) == 0 {
@@ -279,6 +301,11 @@ func (s *Blaze) genService(gen *protogen.Plugin, file *fileInfo, g *protogen.Gen
 	s.generateServer(g, file, service)
 	s.generateImplementInterface(g, file, service)
 }
+func (s *Blaze) genServiceSample(gen *protogen.Plugin, file *fileInfo, g *protogen.GeneratedFile, service *protogen.Service) {
+	servName := service.GoName
+	s.sectionComment(g, servName+` sample implementation`)
+	s.generateServerSample(g, file, service)
+}
 
 func (s *Blaze) generateImplementInterface(g *protogen.GeneratedFile, file *fileInfo, service *protogen.Service) {
 	servStruct := serviceStruct(service)
@@ -465,6 +492,30 @@ func (s *Blaze) generateClient(name string, g *protogen.GeneratedFile, file *fil
 		g.P(`  return nil`)
 		g.P(`}`)
 	}
+}
+func (s *Blaze) generateServerSample(g *protogen.GeneratedFile, file *fileInfo, service *protogen.Service) {
+	//servName := service.GoName
+	// Server implementation.
+	servStruct := serviceSampleStruct(service)
+	g.P(`type `, servStruct, ` struct {`)
+	g.P(`}`)
+	g.P()
+	g.P(`// Methods.`)
+	for _, method := range service.Methods {
+		s.generateServerSampleMethod(g, service, method)
+	}
+}
+
+func (s *Blaze) generateServerSampleMethod(g *protogen.GeneratedFile, service *protogen.Service, method *protogen.Method) {
+	//methName := method.GoName
+	servStruct := serviceSampleStruct(service)
+	var reqArgs []string
+	reqArgs = append(reqArgs, g.QualifiedGoIdent(contextPackage.Ident("Context")))
+	reqArgs = append(reqArgs, fmt.Sprint("*", g.QualifiedGoIdent(method.Input.GoIdent)))
+	ret := "(*" + g.QualifiedGoIdent(method.Output.GoIdent) + ", error)"
+	g.P(method.Comments.Leading, "func( api*", servStruct, ")", method.GoName+"("+strings.Join(reqArgs, ", ")+") "+ret, "{")
+	g.P(` return nil,`, g.QualifiedGoIdent(blazePackage.Ident("ErrorUnimplemented")), `("")`)
+	g.P(`}`)
 }
 
 func (s *Blaze) generateServer(g *protogen.GeneratedFile, file *fileInfo, service *protogen.Service) {
@@ -673,4 +724,8 @@ func unexported(s string) string { return strings.ToLower(s[:1]) + s[1:] }
 
 func serviceStruct(service *protogen.Service) string {
 	return unexported(service.GoName) + "Service"
+}
+
+func serviceSampleStruct(service *protogen.Service) string {
+	return unexported(service.GoName) + "ServiceSample"
 }
