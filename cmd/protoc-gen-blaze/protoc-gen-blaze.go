@@ -15,7 +15,7 @@ import (
 
 var (
 	// Version is the version of the application
-	Version string = "v0.4.1"
+	Version string = "v0.5.0"
 	// BuildTime is the time the application was build
 	BuildTime string
 )
@@ -58,6 +58,7 @@ func main() {
 		for _, f := range gen.Files {
 			if f.Generate {
 				blaze.GenerateFile(gen, f)
+				blaze.GenerateSampleFile(gen, f)
 			}
 		}
 		return nil
