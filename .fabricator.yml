@@ -1,0 +1,10 @@
+apiVersion: fabricator.cestus.io/v1alpha1
+kind: Config
+components:
+  - name: blaze
+    generator: fabricator-generate-project-go
+    spec:
+      goModule: code.cestus.io/blaze
+      repoURL: https://gitlab.com/cestus/incubator/blaze/
+      isTool: true
+

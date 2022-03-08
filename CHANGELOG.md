@@ -10,8 +10,14 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 
 <a name="v0.6.0"></a>
 ## [v0.6.0]
+### CI
+- switch to libv2
+
 ### Features
 - add servicegroup
+
+### Pull Requests
+- Merge branch 'servicegroup' into 'master'
 
 
 <a name="v0.5.0"></a>
