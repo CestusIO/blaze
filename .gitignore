@@ -9,5 +9,6 @@ index.html
 
 config.toml
 
-Makefile
+!Makefile
 !tools/Makefile
+buildhelper.tmp

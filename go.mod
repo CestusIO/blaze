@@ -7,8 +7,8 @@ require (
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-logr/logr v0.4.0
 	github.com/magicmoose/zapr v0.2.0
-	github.com/onsi/ginkgo v1.16.2
-	github.com/onsi/gomega v1.12.0
+	github.com/onsi/ginkgo/v2 v2.1.3
+	github.com/onsi/gomega v1.17.0
 	go.opentelemetry.io/contrib v0.20.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.20.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.20.0
