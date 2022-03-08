@@ -5,7 +5,7 @@
 # Directory to compile binaries to
 BINDIR                  ?= bin
 # List of platforms to target [linux/windows/darwin]
-PLATFORMS               ?= linux windows
+PLATFORMS               ?= linux
 # List of architectures to target [amd64/arm64]
 ARCHITECTURES           := amd64
 # Name of the app used for single application builds
@@ -25,4 +25,7 @@ REGISTRY                ?= ""
 # docker image name
 IMAGE                   := $(REGISTRY)$(IMAGE_NAME)
 # default docker version 
-svermakerHelmLabel 	    ?= latest
+svermakerHelmLabel 	    ?= unreleased
+goModuleBuildVersion    ?= unreleased
+# additional LDFGLAGS (e.g. -w -s)
+ADDITIONALLDFLAGS       ?= 
