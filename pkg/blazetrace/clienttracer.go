@@ -3,12 +3,13 @@ package blazetrace
 import (
 	"context"
 
+	"net/http/httptrace"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/semconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
-	"net/http/httptrace"
 )
 
 var (
@@ -16,12 +17,12 @@ var (
 	ClientName = semconv.PeerServiceKey
 )
 
-//ClientTraceOptions
+// ClientTraceOptions
 type ClientTraceOptions struct {
 	tr trace.Tracer
 }
 
-//ClientTraceOption
+// ClientTraceOption
 type ClientTraceOption func(*ClientTraceOptions)
 
 // ClientTracer allows tracing of blaze services
@@ -36,8 +37,17 @@ type clientTracer struct {
 }
 
 func (s *clientTracer) StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span) {
-	opts = append(opts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindClient))
-	return s.tr.Start(ctx, spanName, opts...)
+	// Create a new slice for SpanStartOption
+	startOpts := make([]trace.SpanStartOption, 0, len(opts))
+
+	// Iterate through opts and add to startOpts
+	for _, opt := range opts {
+		if startOpt, ok := opt.(trace.SpanStartOption); ok {
+			startOpts = append(startOpts, startOpt)
+		}
+	}
+	startOpts = append(startOpts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindClient))
+	return s.tr.Start(ctx, spanName, startOpts...)
 }
 
 func (s *clientTracer) EndSpan(span trace.Span) {

@@ -13,14 +13,14 @@ const (
 	MuxRouteKey = attribute.Key("mux.routes")
 )
 
-//ServiceTraceOptions
+// ServiceTraceOptions
 type ServiceTraceOptions struct {
 	tr  trace.Tracer
 	tmw func(string) func(next http.Handler) http.Handler
 	itf func(ctx context.Context) context.Context
 }
 
-//ServiceTraceOption
+// ServiceTraceOption
 type ServiceTraceOption func(*ServiceTraceOptions)
 
 // ServiceTracer allows tracing of blaze services
@@ -50,8 +50,17 @@ func (s *serverTracer) InjectTracer(ctx context.Context) context.Context {
 }
 
 func (s *serverTracer) StartSpan(ctx context.Context, spanName string, attrs []attribute.KeyValue, opts ...trace.SpanOption) (context.Context, trace.Span) {
-	opts = append(opts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindClient))
-	return s.tr.Start(ctx, spanName, opts...)
+	// Create a new slice for SpanStartOption
+	startOpts := make([]trace.SpanStartOption, 0, len(opts))
+
+	// Iterate through opts and add to startOpts
+	for _, opt := range opts {
+		if startOpt, ok := opt.(trace.SpanStartOption); ok {
+			startOpts = append(startOpts, startOpt)
+		}
+	}
+	startOpts = append(startOpts, trace.WithAttributes(attrs...), trace.WithSpanKind(trace.SpanKindClient))
+	return s.tr.Start(ctx, spanName, startOpts...)
 }
 
 func (s *serverTracer) EndSpan(span trace.Span) {
@@ -104,7 +113,7 @@ func WithTracingMiddleware(tmw func(string) func(next http.Handler) http.Handler
 	}
 }
 
-//WithAttributes collects attributes into a attribute slice
+// WithAttributes collects attributes into a attribute slice
 func WithAttributes(attr ...attribute.KeyValue) []attribute.KeyValue {
 	at := append([]attribute.KeyValue{}, attr...)
 	return at
