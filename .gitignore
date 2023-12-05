@@ -1,14 +1,13 @@
-
+// region CODE_REGION(Common)
 bin/
-.env
-.vscode
-
+dist/
+.vscode/
+.devcontainer/devcontainer.json
+.devcontainer/Dockerfile
 *.coverprofile
-
-index.html
-
-config.toml
-
-!Makefile
-!tools/Makefile
+.env
+tools/bin
+__debug_bin*
 buildhelper.tmp
+.github/actions/
+// endregion
