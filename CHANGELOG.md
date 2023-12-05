@@ -11,6 +11,12 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 <a name="unreleased"></a>
 ## [unreleased]
 
+<a name="v0.6.1"></a>
+## [v0.6.1]
+### Chores
+- move to github
+
+
 <a name="v0.6.0"></a>
 ## [v0.6.0]
 ### CI
@@ -173,7 +179,8 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 
 
 [Unreleased]: https://github.com/CestusIO/blaze.git/compare/unreleased...HEAD
-[unreleased]: https://github.com/CestusIO/blaze.git/compare/v0.6.0...unreleased
+[unreleased]: https://github.com/CestusIO/blaze.git/compare/v0.6.1...unreleased
+[v0.6.1]: https://github.com/CestusIO/blaze.git/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/CestusIO/blaze.git/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/CestusIO/blaze.git/compare/v0.4.1...v0.5.0
 [v0.4.1]: https://github.com/CestusIO/blaze.git/compare/v0.4.0...v0.4.1
