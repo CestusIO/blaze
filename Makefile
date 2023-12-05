@@ -52,7 +52,7 @@ export LDFLAGS
 # building platform string
 b_platform = --> Building $(APP)-$(GOOS)-$(GOARCH)\n
 # building platform command
-b_command = export GOOS=$(GOOS); export GOARCH=$(GOARCH); go build -ldflags "$(LDFLAGS) -X code.cestus.io/libs/buildinfo.name=$(APP)" -o $(BINDIR)/$(APP)-$(GOOS)-$(GOARCH)$(BINARY_$(GOOS)_ENDING) ./cmd/$(APP)/ ;
+b_command = export GOOS=$(GOOS); export GOARCH=$(GOARCH); export CGO_ENABLED=1; go build -ldflags "$(LDFLAGS) -X code.cestus.io/libs/buildinfo.name=$(APP)" -o $(BINDIR)/$(APP)-$(GOOS)-$(GOARCH)$(BINARY_$(GOOS)_ENDING) ./cmd/$(APP)/ ;
 # for each iterations use build message
 fb_platforms =$(foreach GOOS, $(PLATFORMS),$(foreach GOARCH, $(ARCHITECTURES),$(foreach APP, $(APPLICATIONS),$(b_platform))))
 # foreach iterations to do multi platform build
@@ -106,7 +106,7 @@ build_all: install_tools build_all_ci
 
 .PHONY: build_all_ci
 ## Builds for all platforms and architectures (including generation and setup)
-build_all_ci: setup compile_all compile_absolute_everything changelog
+build_all_ci: setup $(ADDITIONAL_CI_STEPS) compile_all compile_absolute_everything changelog
 
 .PHONY: compile_absolute_everything
 ## Builds all files even those not part of the desired outputs
@@ -131,6 +131,13 @@ changelog:
 	$(call msg, --> Generating changelog)
 	git-chglog --next-tag $(goModuleBuildVersion) 1> /dev/null && ([ $$? -eq 0 ] && git-chglog --next-tag $(goModuleBuildVersion) -o CHANGELOG.md) || echo "changelog failure!"
 
+.PHONY: vuln
+vuln: install_tools $(ADDITIONAL_CI_STEPS)
+	set -e; for dir in $(ALL_GO_MOD_DIRS); do \
+		echo "govulncheck  $${dir}/..."; \
+		(cd "$${dir}" && \
+			govulncheck  ./...); \
+	done
 # Plonk the following at the end of your Makefile
 .DEFAULT_GOAL := show-help
 
