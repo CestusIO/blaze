@@ -3,7 +3,7 @@ style: gitlab
 template: CHANGELOG.tpl.md
 info:
   title: CHANGELOG
-  repository_url: https://gitlab.com/cestus/incubator/blaze/
+  repository_url: https://github.com/CestusIO/blaze.git
 options:
   commits:
   # filters:

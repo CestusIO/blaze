@@ -8,14 +8,14 @@ import (
 
 	gengo "code.cestus.io/blaze/cmd/protoc-gen-blaze/internal_gengo"
 	"github.com/go-logr/logr"
-	"github.com/magicmoose/zapr"
+	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
 var (
 	// Version is the version of the application
-	Version string = "v0.6.0"
+	Version string = "v0.6.1"
 	// BuildTime is the time the application was build
 	BuildTime string
 )

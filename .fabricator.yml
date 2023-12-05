@@ -5,6 +5,9 @@ components:
     generator: fabricator-generate-project-go
     spec:
       goModule: code.cestus.io/blaze
-      repoURL: https://gitlab.com/cestus/incubator/blaze/
+      repoURL: https://github.com/CestusIO/blaze.git
       isTool: true
-
+  - name: "fabricator generate"
+    generator: fabricator-generate-go
+    spec:
+      packageName: blaze
