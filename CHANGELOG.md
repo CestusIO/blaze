@@ -10,6 +10,24 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 
 <a name="unreleased"></a>
 ## [unreleased]
+### Chores
+- release version 0.7.0
+
+### Features
+- update otel versions
+
+
+<a name="v0.6.3"></a>
+## [v0.6.3]
+### Bug Fixes
+- more fixes to goreleaser config
+
+
+<a name="v0.6.2"></a>
+## [v0.6.2]
+### CI
+- adapt .gitignore * it missed ignoring the checked out actions
+
 
 <a name="v0.6.1"></a>
 ## [v0.6.1]
@@ -179,7 +197,9 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 
 
 [Unreleased]: https://github.com/CestusIO/blaze.git/compare/unreleased...HEAD
-[unreleased]: https://github.com/CestusIO/blaze.git/compare/v0.6.1...unreleased
+[unreleased]: https://github.com/CestusIO/blaze.git/compare/v0.6.3...unreleased
+[v0.6.3]: https://github.com/CestusIO/blaze.git/compare/v0.6.2...v0.6.3
+[v0.6.2]: https://github.com/CestusIO/blaze.git/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/CestusIO/blaze.git/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/CestusIO/blaze.git/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/CestusIO/blaze.git/compare/v0.4.1...v0.5.0
