@@ -8,8 +8,20 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 ## [Unreleased]
 
 
-<a name="unreleased"></a>
-## [unreleased]
+<a name="v0.7.2"></a>
+## [v0.7.2]
+### Chores
+- add version deduction from version.yaml
+
+
+<a name="v0.7.1"></a>
+## [v0.7.1]
+### Bug Fixes
+- forgot to increase version number
+
+
+<a name="v0.7.0"></a>
+## [v0.7.0]
 ### Chores
 - release version 0.7.0
 
@@ -196,8 +208,10 @@ It assumes the use of [conventional commits](https://www.conventionalcommits.org
 - Merge branch 'init' into 'master'
 
 
-[Unreleased]: https://github.com/CestusIO/blaze.git/compare/unreleased...HEAD
-[unreleased]: https://github.com/CestusIO/blaze.git/compare/v0.6.3...unreleased
+[Unreleased]: https://github.com/CestusIO/blaze.git/compare/v0.7.2...HEAD
+[v0.7.2]: https://github.com/CestusIO/blaze.git/compare/v0.7.1...v0.7.2
+[v0.7.1]: https://github.com/CestusIO/blaze.git/compare/v0.7.0...v0.7.1
+[v0.7.0]: https://github.com/CestusIO/blaze.git/compare/v0.6.3...v0.7.0
 [v0.6.3]: https://github.com/CestusIO/blaze.git/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/CestusIO/blaze.git/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/CestusIO/blaze.git/compare/v0.6.0...v0.6.1

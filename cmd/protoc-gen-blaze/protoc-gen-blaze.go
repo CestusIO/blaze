@@ -7,17 +7,13 @@ import (
 	"os"
 
 	gengo "code.cestus.io/blaze/cmd/protoc-gen-blaze/internal_gengo"
+	"code.cestus.io/libs/buildinfo"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/compiler/protogen"
-)
 
-var (
-	// Version is the version of the application
-	Version string = "v0.7.1"
-	// BuildTime is the time the application was build
-	BuildTime string
+	_ "code.cestus.io/blaze"
 )
 
 // NewZapDevelopmentConfig is a development logger config
@@ -34,9 +30,11 @@ func NewZapDevelopmentConfig() zap.Config {
 
 func main() {
 	versionFlag := flag.Bool("version", false, "print version and exit")
+	buildInfo := buildinfo.ProvideBuildInfo()
 	flag.Parse()
 	if *versionFlag {
-		fmt.Println(Version)
+
+		fmt.Println(buildInfo.Version)
 		os.Exit(0)
 	}
 
@@ -49,8 +47,8 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Cannot init logger (%v)?", err))
 	}
-	log = zapr.NewLogger(zapLog).WithValues("version", Version).WithName("test")
-	blaze := gengo.NewGenerator(log, Version)
+	log = zapr.NewLogger(zapLog).WithValues("version", buildInfo.Version).WithName("test")
+	blaze := gengo.NewGenerator(log, buildInfo.Version)
 	protogen.Options{
 		ParamFunc: flags.Set,
 	}.Run(func(gen *protogen.Plugin) error {
