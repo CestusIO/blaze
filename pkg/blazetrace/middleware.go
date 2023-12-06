@@ -12,7 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/semconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -59,7 +60,7 @@ func Middleware(service string, opts ...Option) func(next http.Handler) http.Han
 	}
 	tracer := cfg.TracerProvider.Tracer(
 		tracerName,
-		oteltrace.WithInstrumentationVersion(otelcontrib.SemVersion()),
+		oteltrace.WithInstrumentationVersion(otelcontrib.Version()),
 	)
 	if cfg.Propagators == nil {
 		cfg.Propagators = otel.GetTextMapPropagator()
@@ -135,10 +136,13 @@ func (tw traceware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rctx := chi.RouteContext(r.Context())
 	routeStr := strings.Join(rctx.RoutePatterns, "")
 	spanName := rctx.RoutePath
-	opts := []oteltrace.SpanOption{
-		oteltrace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", r)...),
-		oteltrace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(r)...),
-		oteltrace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(tw.service, spanName, r)...),
+	opts := []oteltrace.SpanStartOption{
+		// those things do not exist anymore Sometimes i have no idea why those dudes at otel make decisions
+		// and it seems the community also does not.
+		// Since i currently have no setup to validate any of those removing it all for now
+		// oteltrace.WithAttributes(netconv.NetAttributesFromHTTPRequest("tcp", r)...),
+		// oteltrace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(r)...),
+		// oteltrace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(tw.service, spanName, r)...),
 		oteltrace.WithAttributes(MuxRouteKey.String(routeStr)),
 		oteltrace.WithAttributes(semconv.ServiceNameKey.String(tw.service)),
 		oteltrace.WithSpanKind(oteltrace.SpanKindServer),
@@ -149,8 +153,8 @@ func (tw traceware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rrw := getRRW(w)
 	defer putRRW(rrw)
 	tw.handler.ServeHTTP(rrw.writer, r2)
-	attrs := semconv.HTTPAttributesFromHTTPStatusCode(rrw.status)
-	spanStatus, spanMessage := semconv.SpanStatusFromHTTPStatusCode(rrw.status)
-	span.SetAttributes(attrs...)
-	span.SetStatus(spanStatus, spanMessage)
+	// attrs := semconv.HTTPAttributesFromHTTPStatusCode(rrw.status)
+	// spanStatus, spanMessage := semconv.SpanStatusFromHTTPStatusCode(rrw.status)
+	// span.SetAttributes(attrs...)
+	// span.SetStatus(spanStatus, spanMessage)
 }
